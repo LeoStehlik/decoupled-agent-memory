@@ -1,0 +1,6 @@
+.env
+.env.local
+.env.production
+secrets/
+postgres-data/
+nginx-certs/
