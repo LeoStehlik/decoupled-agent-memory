@@ -93,3 +93,17 @@ Use this repo as a blueprint when you want a durable agent memory layer that sta
 
 - `setup-guide.md`
 - `architecture.md`
+
+### Create the first login user
+
+After the stack is up, create a login-capable first user through GoTrue:
+
+```bash
+BASE_URL=http://KOBE_IP \
+EMAIL=admin@example.com \
+PASSWORD='change-me-long-random-password' \
+DISPLAY_NAME='Admin' \
+./scripts/create-initial-user.sh
+```
+
+This uses the public auth signup endpoint and then verifies password login. Once your first private user exists, set `GOTRUE_DISABLE_SIGNUP=true` in `.env` and restart with `docker compose up -d` if you do not want open signup.

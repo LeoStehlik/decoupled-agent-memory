@@ -111,6 +111,21 @@ The working configuration depends on a few specifics:
 
 If the UI shows `Load failed` or `Unexpected response code`, check these proxy rules first.
 
+
+### Create the first login user
+
+After the stack is up, create a login-capable first user through GoTrue:
+
+```bash
+BASE_URL=http://KOBE_IP \
+EMAIL=admin@example.com \
+PASSWORD='change-me-long-random-password' \
+DISPLAY_NAME='Admin' \
+./scripts/create-initial-user.sh
+```
+
+This uses the public auth signup endpoint and then verifies password login. Once your first private user exists, set `GOTRUE_DISABLE_SIGNUP=true` in `.env` and restart with `docker compose up -d` if you do not want open signup.
+
 ## 7. Hardening for a private deployment
 
 - bind exposure to the private interface only if possible
