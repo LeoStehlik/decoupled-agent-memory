@@ -104,13 +104,6 @@ services:
       NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-http://KOBE_IP}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-YOUR_SUPABASE_ANON_KEY}
       NEXT_PUBLIC_MCP_URL: ${NEXT_PUBLIC_MCP_URL:-http://KOBE_IP/mcp}
-    command:
-      - sh
-      - -lc
-      - |
-        set -eu
-        find /app/.next -type f \( -name "*.js" -o -name "*.html" -o -name "*.json" \) -print0 | xargs -0 sed -i           -e "s|http://10.12.1.107:8001/mcp|$${NEXT_PUBLIC_MCP_URL}|g"           -e "s|http://10.12.1.107:8001/v1/uploads|$${NEXT_PUBLIC_API_URL}/v1/uploads|g"           -e "s|http://10.12.1.107:8001|$${NEXT_PUBLIC_API_URL}|g"           -e "s|http://10.12.1.107:54321|$${NEXT_PUBLIC_SUPABASE_URL}|g"
-        exec node server.js
     expose:
       - "3000"
     networks:
