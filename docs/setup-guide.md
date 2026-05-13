@@ -124,7 +124,7 @@ DISPLAY_NAME='Admin' \
 ./scripts/create-initial-user.sh
 ```
 
-This uses the public auth signup endpoint and then verifies password login. Once your first private user exists, set `GOTRUE_DISABLE_SIGNUP=true` in `.env` and restart with `docker compose up -d` if you do not want open signup.
+This uses the public auth signup endpoint, verifies password login, and marks the user onboarded through the API. Set `COMPLETE_ONBOARDING=false` if you only want to create the login. Once your first private user exists, set `GOTRUE_DISABLE_SIGNUP=true` in `.env` and restart with `docker compose up -d` if you do not want open signup.
 
 ## 7. Hardening for a private deployment
 

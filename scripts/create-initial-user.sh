@@ -6,6 +6,7 @@ EMAIL="${EMAIL:-admin@example.invalid}"
 PASSWORD="${PASSWORD:-}"
 DISPLAY_NAME="${DISPLAY_NAME:-Admin}"
 ANON_KEY="${ANON_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY:-public-anon-key}}"
+COMPLETE_ONBOARDING="${COMPLETE_ONBOARDING:-true}"
 
 if [ -z "$PASSWORD" ]; then
   printf 'ERROR: set PASSWORD, for example:\n  PASSWORD="change-me-long-random-password" %s\n' "$0" >&2
@@ -57,14 +58,36 @@ if [ -z "$login_response" ]; then
   exit 1
 fi
 
-LOGIN_RESPONSE="$login_response" python3 - <<'PY'
-import json, os
+token="$(LOGIN_RESPONSE="$login_response" python3 - <<'PY'
+import json, os, sys
 payload=json.loads(os.environ['LOGIN_RESPONSE'])
 token=payload.get('access_token')
 user=payload.get('user') or {}
 if not token:
     raise SystemExit('Login did not return access_token')
-print(f"OK: login verified for {user.get('email', '<unknown>')}")
+print(f"OK: login verified for {user.get('email', '<unknown>')}", file=sys.stderr)
+print(token)
 PY
+)"
+
+case "$COMPLETE_ONBOARDING" in
+  true|1|yes|YES|y|Y)
+    curl -fsS -X POST "$BASE_URL/api/v1/onboarding/complete" \
+      -H "Authorization: Bearer $token" \
+      -H 'Content-Type: application/json' \
+      -d '{}' >/dev/null
+    me_response="$(curl -fsS "$BASE_URL/api/v1/me" -H "Authorization: Bearer $token")"
+    ME_RESPONSE="$me_response" python3 - <<'PY'
+import json, os
+payload=json.loads(os.environ['ME_RESPONSE'])
+if not payload.get('onboarded'):
+    raise SystemExit('User login works, but onboarding verification failed')
+print(f"OK: onboarding complete for {payload.get('email', '<unknown>')}")
+PY
+    ;;
+  *)
+    printf 'Skipping onboarding completion because COMPLETE_ONBOARDING=%s\n' "$COMPLETE_ONBOARDING" >&2
+    ;;
+esac
 
 printf '\nNext recommended hardening step for private deployments:\n  set GOTRUE_DISABLE_SIGNUP=true in .env and run docker compose up -d\n' >&2
