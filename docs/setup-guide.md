@@ -52,10 +52,13 @@ Recommended internal values:
 
 - `APP_URL=http://KOBE_IP`
 - `APP_URLS=http://KOBE_IP,http://MAC_MINI_IP`
-- `SUPABASE_URL=http://KOBE_IP/auth/v1`
+- `SUPABASE_URL=http://KOBE_IP`
+- `SUPABASE_AUTH_EXTERNAL_URL=http://KOBE_IP/auth/v1`
 - `NEXT_PUBLIC_API_URL=http://KOBE_IP/api`
-- `NEXT_PUBLIC_SUPABASE_URL=http://KOBE_IP/auth/v1`
+- `NEXT_PUBLIC_SUPABASE_URL=http://KOBE_IP`
 - `NEXT_PUBLIC_MCP_URL=http://KOBE_IP/mcp`
+
+Important: `SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_URL` must be the public base origin, for example `http://KOBE_IP`. Do not include `/auth/v1`; the clients append that path themselves. `SUPABASE_AUTH_EXTERNAL_URL` is the GoTrue external auth URL and should include `/auth/v1`.
 
 ## 3. Review the two Nginx layers
 

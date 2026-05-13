@@ -28,10 +28,10 @@ services:
     environment:
       GOTRUE_API_HOST: 0.0.0.0
       GOTRUE_API_PORT: 9999
-      API_EXTERNAL_URL: ${SUPABASE_URL:-http://KOBE_IP/auth/v1}
+      API_EXTERNAL_URL: ${SUPABASE_AUTH_EXTERNAL_URL:-http://KOBE_IP/auth/v1}
       GOTRUE_SITE_URL: ${APP_URL:-http://KOBE_IP}
       GOTRUE_URI_ALLOW_LIST: ${APP_URL:-http://KOBE_IP},${APP_URL:-http://KOBE_IP}/*,http://MAC_MINI_IP,http://MAC_MINI_IP/*
-      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_DISABLE_SIGNUP: ${GOTRUE_DISABLE_SIGNUP:-false}
       GOTRUE_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET}
       GOTRUE_JWT_AUD: authenticated
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
@@ -45,7 +45,7 @@ services:
       GOTRUE_SMTP_USER: fake_mail_user
       GOTRUE_SMTP_PASS: fake_mail_password
       GOTRUE_SMTP_ADMIN_EMAIL: admin@example.com
-      GOTRUE_EXTERNAL_EMAIL_ENABLED: "false"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: ${GOTRUE_EXTERNAL_EMAIL_ENABLED:-true}
       GOTRUE_EXTERNAL_GOOGLE_ENABLED: "false"
       GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
       GOTRUE_OPERATOR_TOKEN: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET}
@@ -79,7 +79,7 @@ services:
       API_URL: http://api:8000
       APP_URL: ${APP_URL:-http://KOBE_IP}
       APP_URLS: ${APP_URLS:-http://KOBE_IP,http://MAC_MINI_IP}
-      SUPABASE_URL: ${SUPABASE_URL:-http://KOBE_IP/auth/v1}
+      SUPABASE_URL: ${SUPABASE_URL:-http://KOBE_IP}
       SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-YOUR_SUPABASE_ANON_KEY}
       SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET}
       GLOBAL_OCR_ENABLED: "false"
@@ -101,7 +101,7 @@ services:
       - ./.env
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://KOBE_IP/api}
-      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-http://KOBE_IP/auth/v1}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-http://KOBE_IP}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-YOUR_SUPABASE_ANON_KEY}
       NEXT_PUBLIC_MCP_URL: ${NEXT_PUBLIC_MCP_URL:-http://KOBE_IP/mcp}
     expose:
@@ -123,7 +123,7 @@ services:
       API_URL: http://api:8000
       APP_URL: ${APP_URL:-http://KOBE_IP}
       MCP_URL: ${MCP_URL:-http://KOBE_IP/mcp}
-      SUPABASE_URL: ${SUPABASE_URL:-http://KOBE_IP/auth/v1}
+      SUPABASE_URL: ${SUPABASE_URL:-http://KOBE_IP}
     expose:
       - "8080"
     command: ["python", "-m", "local_server"]
