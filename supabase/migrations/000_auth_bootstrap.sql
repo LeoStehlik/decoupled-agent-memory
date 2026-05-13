@@ -1,3 +1,10 @@
+SELECT 'CREATE DATABASE supabase_auth'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'supabase_auth')\gexec
+
+\connect supabase_auth
+CREATE SCHEMA IF NOT EXISTS auth;
+
+\connect supavault
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE SCHEMA IF NOT EXISTS auth;
