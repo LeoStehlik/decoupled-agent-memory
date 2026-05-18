@@ -57,8 +57,12 @@ Recommended internal values:
 - `NEXT_PUBLIC_API_URL=http://KOBE_IP/api`
 - `NEXT_PUBLIC_SUPABASE_URL=http://KOBE_IP`
 - `NEXT_PUBLIC_MCP_URL=http://KOBE_IP/mcp`
+- `NEXT_PUBLIC_CANONICAL_HOST=KOBE_IP` or your stable internal hostname
+- `NEXT_PUBLIC_CANONICAL_REDIRECT_HOSTS=ALT_KOBE_IP,OLD_HOSTNAME` for any alternate addresses that should redirect to the canonical browser origin
 
 Important: `SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_URL` must be the public base origin, for example `http://KOBE_IP`. Do not include `/auth/v1`; the clients append that path themselves. `SUPABASE_AUTH_EXTERNAL_URL` is the GoTrue external auth URL and should include `/auth/v1`.
+
+Choose one canonical browser origin and stick to it. Browsers isolate auth cookies and local storage by origin, so reaching the same stack as `http://KOBE_IP` in one tab and `http://ALT_KOBE_IP` in another can look like two different sessions or users. Set `NEXT_PUBLIC_CANONICAL_HOST` to the preferred host and list any old/internal aliases in `NEXT_PUBLIC_CANONICAL_REDIRECT_HOSTS`.
 
 ## 3. Review the two Nginx layers
 
@@ -92,6 +96,8 @@ Then test from the internal client or another trusted client:
 curl -I http://KOBE_IP/
 curl -I http://KOBE_IP/api/health
 curl -I http://KOBE_IP/auth/v1/health
+# If you configured alternate redirect hosts, this should return 308 to the canonical origin:
+curl -I http://ALT_KOBE_IP/
 curl -i -X OPTIONS http://KOBE_IP/auth/v1/token \
   -H Origin: http://MAC_MINI_IP \
   -H Access-Control-Request-Method: POST
@@ -107,6 +113,7 @@ The working configuration depends on a few specifics:
 - auth responses do not emit duplicate `Access-Control-Allow-Origin` headers
 - upstream auth headers are forwarded cleanly
 - `X-Forwarded-Proto`, `X-Forwarded-Host`, and `Host` remain coherent
+- non-canonical browser origins redirect before the app/auth layer can create a second session
 - websocket upgrade headers are preserved where required
 
 If the UI shows `Load failed` or `Unexpected response code`, check these proxy rules first.
@@ -147,5 +154,6 @@ This uses the public auth signup endpoint, verifies password login, and marks th
 
 - do not reintroduce public DNS or TLS assumptions into this repo
 - do not mix real internal IPs or hostnames into committed files
+- do not treat multiple raw IPs as equally valid browser entrypoints; pick one canonical origin and redirect the rest
 - do not skip the auth preflight test
 - do not point agents only at raw files and call that memory
