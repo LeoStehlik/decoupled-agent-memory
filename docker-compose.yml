@@ -112,7 +112,11 @@ services:
       - sovereign
 
   mcp:
-    image: ${MCP_IMAGE:-ghcr.io/leostehlik/llm-wiki-mcp:latest}
+    build:
+      context: ./overlays/mcp
+      args:
+        MCP_BASE_IMAGE: ${MCP_BASE_IMAGE:-ghcr.io/leostehlik/llm-wiki-mcp:latest}
+    image: ${MCP_IMAGE:-sovereign-brain-mcp:local}
     container_name: sovereign-brain-mcp
     restart: unless-stopped
     depends_on:
@@ -126,9 +130,12 @@ services:
       APP_URL: ${APP_URL:-http://KOBE_IP}
       MCP_URL: ${MCP_URL:-http://KOBE_IP/mcp}
       SUPABASE_URL: ${SUPABASE_URL:-http://KOBE_IP}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET}
+      LOCAL_USER_ID: ${LOCAL_USER_ID:-}
+      STATIC_BEARER_TOKEN: ${STATIC_BEARER_TOKEN:-}
     expose:
       - "8080"
-    command: ["python", "-m", "local_server"]
+    command: ["python", "-m", "server"]
     networks:
       - sovereign
 
