@@ -68,6 +68,7 @@ This blueprint keeps the fixes that actually mattered:
 - stable `Host` and `X-Forwarded-*` propagation
 - websocket upgrade handling where needed
 - internal routing focused on `/`, `/api/`, `/auth/v1/`, and `/mcp`
+- MCP clients must send an `Authorization: Bearer ...` header; for trusted local agents this can be a static bearer token mapped to `LOCAL_USER_ID`
 - optional canonical-origin redirects so `http://KOBE_IP` and any alternate internal address do not create separate browser storage/auth sessions
 
 ## Sanitisation note

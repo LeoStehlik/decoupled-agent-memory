@@ -41,6 +41,7 @@ At minimum set:
 - `POSTGRES_PASSWORD`
 - `SUPABASE_JWT_SECRET`
 - `SUPABASE_ANON_KEY`
+- `LOCAL_USER_ID` and `STATIC_BEARER_TOKEN` if a trusted local agent will connect over MCP without an interactive Supabase user token
 - `APP_URL`
 - `SUPABASE_URL`
 - `NEXT_PUBLIC_*`
@@ -63,6 +64,23 @@ Recommended internal values:
 Important: `SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_URL` must be the public base origin, for example `http://KOBE_IP`. Do not include `/auth/v1`; the clients append that path themselves. `SUPABASE_AUTH_EXTERNAL_URL` is the GoTrue external auth URL and should include `/auth/v1`.
 
 Choose one canonical browser origin and stick to it. Browsers isolate auth cookies and local storage by origin, so reaching the same stack as `http://KOBE_IP` in one tab and `http://ALT_KOBE_IP` in another can look like two different sessions or users. Set `NEXT_PUBLIC_CANONICAL_HOST` to the preferred host and list any old/internal aliases in `NEXT_PUBLIC_CANONICAL_REDIRECT_HOSTS`.
+
+For MCP clients, configure the client with the MCP URL and a bearer header. Example OpenClaw-style shape:
+
+```json
+{
+  "mcpServers": {
+    "llmwiki": {
+      "url": "http://KOBE_IP/mcp",
+      "headers": {
+        "Authorization": "Bearer replace-with-long-random-mcp-token"
+      }
+    }
+  }
+}
+```
+
+The static token is only for trusted private-network agent clients. Browser users should still authenticate through GoTrue/Supabase.
 
 ## 3. Review the two Nginx layers
 

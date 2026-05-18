@@ -57,7 +57,7 @@ A Sovereign Brain reduces that tax with three layers:
 
 ## The important fix
 
-The original breakage behind messages like **Load failed** and **Unexpected response code** was not about public hosting. It was an internal routing problem caused by browser preflights, forwarded headers, and duplicate or conflicting CORS behavior between layers.
+The original breakage behind messages like **Load failed** and **Unexpected response code** was not about public hosting. It was an internal routing problem caused by browser preflights, forwarded headers, duplicate or conflicting CORS behavior between layers, and treating multiple internal IPs as equivalent browser origins.
 
 This blueprint keeps the fixes that actually mattered:
 
@@ -67,6 +67,7 @@ This blueprint keeps the fixes that actually mattered:
 - stable `Host` and `X-Forwarded-*` propagation
 - websocket upgrade handling where needed
 - internal routing focused on `/`, `/api/`, `/auth/v1/`, and `/mcp`
+- MCP clients must send an `Authorization: Bearer ...` header; for trusted local agents this can be a static bearer token mapped to `LOCAL_USER_ID`
 
 ## Sanitisation note
 
@@ -77,7 +78,7 @@ All environment-specific values are placeholders, for example:
 - `INTERNAL_APP_HOST`
 - `YOUR_*`
 
-No real internal IPs, domains, or hostnames should live in this repo.
+No real internal IPs, domains, or hostnames should live in this repo. Keep canonical-origin examples as placeholders and put the real values only in the deployment `.env`.
 
 ## Intended use
 
