@@ -41,7 +41,7 @@ At minimum set:
 - `POSTGRES_PASSWORD`
 - `SUPABASE_JWT_SECRET`
 - `SUPABASE_ANON_KEY`
-- `LOCAL_USER_ID` and `STATIC_BEARER_TOKEN` if a trusted local agent will connect over MCP without an interactive Supabase user token
+- `LOCAL_USER_ID` and `STATIC_BEARER_TOKEN` if a trusted local agent will connect over MCP without an interactive Supabase user token. Use the real browser-visible user UUID that should own agent-written wiki pages; avoid hidden service users unless you want a separate workspace.
 - `APP_URL`
 - `SUPABASE_URL`
 - `NEXT_PUBLIC_*`
