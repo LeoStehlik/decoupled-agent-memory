@@ -1,235 +1,261 @@
 # Sovereign Brain
 
-A private memory layer for long-running agents: source-backed wiki pages, maintained synthesis, graph references, and freshness checks that make stale knowledge visible.
+Private, source-backed memory for long-running agents.
 
-## Why It Matters
+Sovereign Brain turns a pile of notes, logs, decisions, project files, and wiki pages into an operating memory that can answer a harder question than search:
 
-Most agent systems lose time and trust because every session reconstructs context from raw files. Notes get reread, decisions get rediscovered, contradictions stay buried, and polished summaries keep looking current after the source material has changed.
+> What is current, what changed, what needs review, and what source evidence supports it?
 
-Sovereign Brain turns that into a maintained operating memory:
+It is built for the reality of agent work: sessions end, context windows reset, projects keep moving, and yesterday's polished summary can become dangerously stale. The system keeps raw sources as evidence, maintained synthesis as the current view, and a review loop that makes stale knowledge visible instead of quietly trusted.
 
-1. **Raw sources** remain the evidence layer.
-2. **Wiki pages** compile the current understanding.
-3. **Synthesis pages** state what matters now and link back to sources.
-4. **Maintenance checks** report stale synthesis, duplicate active paths, uncited sources, and graph health.
-5. **MCP/API access** lets agents read, write, and verify memory instead of improvising it.
+## What This Repo Is
 
-The product promise is simple: an agent should be able to ask one private workspace what changed, what is current, what is risky, and which source documents support the answer.
+This repository is the source of truth for the Sovereign Brain / decoupled-agent-memory stack.
 
-## Fast Demo
+It contains:
 
-Start the stack, create a first user, import the sample corpus, rebuild references, and run maintenance:
+- a private LLM Wiki-based application under `llmwiki-app/`
+- API and MCP overlays for private deployments
+- maintenance and freshness checks
+- source-backed synthesis review workflows
+- a browser Brain console under `/brain`
+- demo corpora and proof scripts
+- deployment/rebuild scripts for the integrated internal stack
+- project history in `CHANGELOG.md`
+
+The project started from Andrej Karpathy's LLM Wiki idea and Lucas Astorian's open-source implementation, then grew into a private agent-memory control plane: authenticated, source-backed, reviewable, and integrated into one product surface.
+
+## The Problem
+
+Most agent memory fails in boring ways:
+
+- raw files get reread instead of understood
+- decisions get rediscovered every session
+- stale summaries still look authoritative
+- contradictions stay hidden
+- agents cannot prove where an answer came from
+- a "memory system" becomes another archive nobody maintains
+
+Sovereign Brain treats memory as an operational system, not a dumping ground.
+
+## The Model
+
+```text
+Raw sources
+  -> source documents, logs, briefs, notes, markdown, PDFs
+
+Maintained wiki
+  -> pages that compile current understanding
+
+Synthesis pages
+  -> opinionated current-state summaries with links back to evidence
+
+Maintenance layer
+  -> graph references, duplicate checks, uncited-source checks, stale synthesis checks
+
+Review loop
+  -> proposal, evidence map, diff, apply/reject decision, ledger
+
+Agent access
+  -> MCP/API tools for search, read, write, brief, review, and health
+```
+
+The key rule: synthesis must stay attached to source evidence. When linked sources change, the synthesis becomes review work.
+
+## Current Product Surface
+
+### `/brain`
+
+The Brain console is the main human entry point.
+
+It is integrated into the LLM Wiki product shell and uses the existing login/session. There is no separate token form for normal users.
+
+Tabs:
+
+- **Brief**: trust state, recent changes, and the next useful action
+- **Review**: stale synthesis, linked evidence, proposals, and apply/reject controls
+- **Health**: raw maintenance counters and graph state
+- **Artifacts**: decision ledger and proof trail
+
+### Review Workflow
+
+1. A source changes.
+2. Linked synthesis becomes stale.
+3. Brain shows the affected page in the review queue.
+4. The user generates a source-backed replacement proposal.
+5. Brain shows the evidence map, old/new impact, and diff.
+6. The user applies or rejects with an optional rationale.
+7. The decision is written to the review ledger.
+
+This is the product loop: memory is trusted because it can be checked.
+
+## What Is Included
+
+| Path | Purpose |
+| --- | --- |
+| `llmwiki-app/` | Vendored LLM Wiki app used as the Sovereign Brain product shell |
+| `llmwiki-app/SOVEREIGN_BRAIN.md` | Ownership boundary and deployment notes for the vendored app |
+| `overlays/api/` | API overlay: graph routes, maintenance status, hosted auth fixes, proposal/review endpoints |
+| `overlays/mcp/` | MCP overlay: private auth compatibility and agent-facing maintenance tools |
+| `scripts/rebuild-integrated-llmwiki.sh` | Rebuilds the integrated internal stack from this repo |
+| `scripts/sovereign-sync.sh` | Idempotent markdown source/synthesis sync |
+| `scripts/brain-brief.sh` | CLI operating brief |
+| `scripts/brain-review.sh` | CLI review queue |
+| `scripts/propose-review.sh` | Source-backed proposal generation/apply flow |
+| `examples/demo-corpus/` | First-run demo corpus |
+| `examples/review-demo/` | Stale-source to reviewed-synthesis proof loop |
+| `docs/` | Setup, architecture, Brain console, review queue, proposals, and synthesis maintainer docs |
+| `CHANGELOG.md` | Retrospective project history and release trail |
+
+## Quick Start
+
+This stack is designed for a private/internal network, not public SaaS exposure.
 
 ```bash
 cp .env.example .env
-# edit .env placeholders first
+# edit .env first
 
 docker compose up -d --build
+```
 
-BASE_URL=http://KOBE_IP \
+Create the first login user:
+
+```bash
+BASE_URL=http://INTERNAL_APP_HOST \
+EMAIL=admin@example.com \
+PASSWORD='change-me-long-random-password' \
+DISPLAY_NAME='Admin' \
+./scripts/create-initial-user.sh
+```
+
+Run the first demo:
+
+```bash
+BASE_URL=http://INTERNAL_APP_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 make demo
 ```
 
-The demo imports `examples/demo-corpus`, creates maintained synthesis pages, rebuilds the graph, and prints the wiki and console URLs.
-
-Open the product console:
+Open:
 
 ```text
-http://KOBE_IP/brain
+http://INTERNAL_APP_HOST/brain
 ```
 
-Paste a Supabase user token or trusted static bearer token once, pick a knowledge base, then use the tabs for Brief, Review, Health, and Artifacts. For a password-login demo user, get a token with `BASE_URL=http://KOBE_IP EMAIL=admin@example.com PASSWORD=change-me-long-random-password ./scripts/get-token.sh`.
+## Proof Commands
 
 Run the review demo:
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_APP_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 make review-demo
 ```
 
-The review demo imports the baseline corpus, updates one source document so linked synthesis becomes stale, prints the review queue, then applies a reviewed synthesis update and proves the queue clears. Open the operator page at:
-
-```text
-http://KOBE_IP/brain-review
-```
-
-Run the proposal demo:
+Run proposal generation and apply proof:
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_APP_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 make proposal-demo
 ```
 
-The proposal demo generates source-backed markdown proposal packages under `out/review-proposals/`, applies them only in the explicit demo apply step, and then proves the review queue is clean.
-
-Run the ledger demo:
+Run the ledger proof:
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_APP_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 make ledger-demo
 ```
 
-The ledger demo adds a unified diff and append-only `review-decisions.jsonl` entries for proposal and apply actions.
-
-Run the brief demo:
+Run the operating brief proof:
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_APP_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 make brief-demo
 ```
 
-The brief demo shows the product surface: what changed, what needs attention, what was repaired, and the next useful action.
-
-## What Is Included
-
-- `docker-compose.yml` for the internal stack.
-- `overlays/api/` for private hosted API fixes, graph routes, maintenance status, and idempotent document identity support.
-- `overlays/mcp/` for static bearer auth, HS256 Supabase JWT compatibility, host+port MCP DNS-rebinding allowance, and maintenance tools.
-- `static/brain.html` for the unified human product console.
-- `static/brain-health.html` for a lightweight human health surface.
-- `static/brain-review.html` for the human synthesis review queue.
-- `examples/demo-corpus/` for a realistic first-run demo.
-- `examples/review-demo/` for a stale-source to reviewed-synthesis proof loop.
-- `scripts/bootstrap-demo.sh` for first-run demo setup.
-- `scripts/sovereign-sync.sh` for idempotent markdown sync.
-- `scripts/brain-review.sh` for terminal review briefings.
-- `scripts/review-demo.sh` for the end-to-end freshness review demo.
-- `scripts/propose-review.sh` for source-backed synthesis proposal packages.
-- `scripts/proposal-demo.sh` for the proposal/apply proof loop.
-- `scripts/ledger-demo.sh` for proposal diffs plus acceptance-ledger proof.
-- `scripts/brain-brief.sh` for a concise operating brief.
-- `scripts/brief-demo.sh` for before/after brief proof.
-- `scripts/smoke-test.sh` for login/API/MCP/maintenance proof.
-- `docs/synthesis-maintainer.md` for the maintained synthesis pattern.
-
-## Core Components
-
-| Component | Role |
-| --- | --- |
-| `db` | Postgres persistence for documents, wiki pages, auth data, references, and sync metadata |
-| `supabase-auth` | GoTrue auth service |
-| `supabase-proxy` | Internal auth proxy with preflight handling and header cleanup |
-| `api` | Ingestion, search, write, graph, and maintenance API |
-| `web` | Human UI for upload, browsing, and review |
-| `mcp` | Agent tool surface for search, read, write, and maintenance checks |
-| `edge` | Internal Nginx entrypoint routing web, API, MCP, auth, and health page |
-
-## Product Surfaces
-
-### Brain Console
-
-`/brain` is the default human entry point. It combines the brief, review queue, health counters, and proposal/ledger workflow into one console with shared connection state.
-
-Use it to answer the first operator questions:
-
-- Is this brain healthy?
-- What changed recently?
-- What needs review before synthesis can be trusted?
-- What proposal or ledger command should run next?
-
-### Maintained Synthesis
-
-Synthesis pages live under `/wiki/synthesis/`. They should be short, opinionated, and source-backed. They are not generated filler; they are the current operating position with links to evidence.
-
-### Brain Health
-
-`/brain-health` reports:
-
-- active documents
-- source documents
-- wiki pages
-- synthesis pages
-- reference edges
-- duplicate active paths
-- stale synthesis pages
-- uncited sources
-- recent changes
-
-This is the trust surface. Do not claim a brain is healthy until this is clean.
-
-For normal human operation, prefer `/brain`. Keep `/brain-health` as a direct technical deep link.
-
-### Brain Review
-
-`/brain-review` shows the operator queue behind the health warning:
-
-- stale synthesis pages
-- newer linked sources that caused staleness
-- uncited source candidates
-- duplicate active paths
-
-This is the product loop: changed source evidence creates review work, reviewed synthesis clears the queue, and health returns to clean.
-
-For normal human operation, prefer the Review tab in `/brain`. Keep `/brain-review` as a direct queue deep link.
-
-### Proposal Packages
-
-`make propose` reads the review queue, fetches stale synthesis plus linked source evidence, and writes proposal markdown plus JSON metadata under `out/review-proposals/`. The first version keeps apply explicit: generated proposals are review artifacts until `scripts/propose-review.sh --apply` is run.
-
-Each proposal also writes a unified diff and appends a decision entry to `review-decisions.jsonl`, so proposed and applied memory repairs are auditable.
-
-The `/brain` Review tab provides the browser-native version of the same loop. It can generate a proposal for one stale synthesis page, show the proposed content and diff side by side, apply or reject it, and write the decision into the database-backed review ledger.
-
-### Brain Brief
-
-`/brain-brief` and `make brief` summarize the operating state of one brain: trust status, recent changes, stale synthesis, uncited sources, recent repair activity, and the recommended next action. This is the cockpit view for humans and agents.
-
-For normal human operation, prefer the Brief tab in `/brain`. Keep `/brain-brief` as a direct operating-brief deep link.
-
-### Sync CLI
-
-`./scripts/sovereign-sync.sh` logs in, creates or finds a knowledge base, upserts markdown source files, upserts synthesis files, optionally rebuilds the graph, and prints maintenance status.
+Run smoke checks:
 
 ```bash
-BASE_URL=http://KOBE_IP \
-EMAIL=admin@example.com \
-PASSWORD='change-me-long-random-password' \
-KB_NAME='Demo Sovereign Brain' \
-./scripts/sovereign-sync.sh
-```
-
-### Smoke Test
-
-```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_APP_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 MCP_TOKEN='replace-with-long-random-mcp-token' \
 make smoke
 ```
 
-## Attribution
+## Integrated Internal Rebuild
 
-This repository is an internal/private deployment blueprint derived from **Andrej Karpathy's LLM Wiki** pattern and the open-source implementation by **Lucas Astorian** at `lucasastorian/llmwiki` (`https://github.com/lucasastorian/llmwiki`). Keep that credit prominent in downstream reuse.
+For the integrated LLM Wiki deployment, this repo owns the source now.
+
+```bash
+make rebuild-integrated-llmwiki
+```
+
+That script:
+
+- pulls the latest `decoupled-agent-memory`
+- builds API and MCP overlay images
+- syncs `llmwiki-app/` into the deployment directory
+- preserves host-local `.env` and compose configuration
+- rebuilds/restarts web, API, and MCP
+- checks `/brain`, `/brain-review`, and `/wikis`
+
+## Architecture
+
+| Component | Role |
+| --- | --- |
+| `db` | Postgres persistence for auth, documents, chunks, references, review decisions, and sync metadata |
+| `supabase-auth` | GoTrue auth service |
+| `supabase-proxy` | Internal auth proxy and CORS/preflight cleanup |
+| `api` | Ingestion, search, write, graph, maintenance, and review APIs |
+| `web` | LLM Wiki UI plus the integrated Brain console |
+| `mcp` | Agent tool surface for search, read, write, maintenance status, review queue, and briefs |
+| `edge` | Internal Nginx entrypoint for web, API, MCP, auth, and static routes |
+
+## Design Principles
+
+- **Evidence first**: answers should trace back to source documents.
+- **Current beats complete**: stale synthesis is worse than missing synthesis.
+- **Review is a feature**: changed evidence creates visible review work.
+- **Agents need tools, not vibes**: expose memory through MCP/API with health checks.
+- **Repo is truth**: live tweaks must be committed here or they do not exist.
+- **Private by default**: real hosts, tokens, emails, and deployment secrets stay out of git.
 
 ## Private Deployment Boundaries
 
-This is not a public SaaS template. It is built for a trusted network perimeter, for example a private server plus internal clients. Real IPs, domains, tokens, emails, and hostnames belong in `.env`, not in the repo.
+Use placeholders in committed files:
 
-Use placeholders such as:
-
+- `INTERNAL_APP_HOST`
 - `KOBE_IP`
 - `MAC_MINI_IP`
-- `INTERNAL_APP_HOST`
 - `YOUR_*`
+
+Keep real IPs, hostnames, domains, tokens, passwords, and email addresses in `.env` or host-local deployment files.
+
+Choose one canonical browser origin. Browsers isolate auth and local storage by origin, so the same server reached through two different hosts can look like two different sessions.
+
+## Attribution
+
+Sovereign Brain builds on the LLM Wiki pattern inspired by Andrej Karpathy and the open-source implementation by Lucas Astorian at `lucasastorian/llmwiki`.
+
+This repository is now the private Sovereign Brain source of truth. Upstream LLM Wiki remains credited as the foundation; Sovereign Brain-specific product, deployment, and agent-memory work lives here.
 
 ## Read Next
 
-- `docs/product-demo.md`
+- `CHANGELOG.md`
+- `llmwiki-app/SOVEREIGN_BRAIN.md`
 - `docs/setup-guide.md`
+- `docs/architecture.md`
 - `docs/brain-console.md`
 - `docs/review-queue.md`
 - `docs/proposals.md`
 - `docs/brain-brief.md`
 - `docs/synthesis-maintainer.md`
-- `docs/architecture.md`

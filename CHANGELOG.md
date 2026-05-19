@@ -13,6 +13,7 @@ All notable changes to the Sovereign Brain / decoupled-agent-memory project are 
 
 ### Changed
 - Switched the live integrated LLM Wiki deployment to be rebuilt from the decoupled-agent-memory repository instead of a separate upstream checkout.
+- Rewrote `README.md` as a product/repository front door: clearer problem statement, model, repo map, Brain console workflow, quick start, proof commands, rebuild path, architecture, design principles, private deployment boundaries, and attribution.
 - Improved review proposal generation so candidates are replacement-oriented, remove stale generated review blocks, preserve frontmatter, and include concise source-backed evidence.
 - Updated the Brain review UI to label generated updates as replacement synthesis, show evidence basis/source excerpts, explain old-vs-new application impact, and require explicit confirmation before applying replacements.
 - Hardened the rebuild path after proof testing exposed a missing Supabase nginx file in the vendored app tree.
