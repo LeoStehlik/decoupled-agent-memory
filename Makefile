@@ -1,4 +1,4 @@
-.PHONY: demo review-demo proposal-demo ledger-demo brief-demo review propose brief smoke ui-smoke
+.PHONY: demo review-demo proposal-demo ledger-demo brief-demo review propose brief smoke ui-smoke rebuild-integrated-llmwiki
 
 demo:
 	./scripts/bootstrap-demo.sh
@@ -29,3 +29,6 @@ smoke:
 
 ui-smoke:
 	./scripts/ui-smoke.sh
+
+rebuild-integrated-llmwiki:
+	./scripts/rebuild-integrated-llmwiki.sh
