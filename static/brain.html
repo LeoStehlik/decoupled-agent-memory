@@ -336,6 +336,58 @@
       border-left: 2px solid var(--border);
       padding-left: 10px;
     }
+    .review-workspace {
+      margin-top: 16px;
+      display: none;
+    }
+    .review-workspace.active {
+      display: block;
+    }
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 360px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 10px;
+      font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .diff {
+      min-height: 360px;
+      max-height: 520px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .danger {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 7px;
+      color: var(--muted);
+      font-size: 12px;
+    }
     .empty {
       color: var(--muted);
       padding-top: 8px;
@@ -378,6 +430,9 @@
         margin-top: 0;
       }
       .connection, .grid, .trust {
+        grid-template-columns: 1fr;
+      }
+      .split {
         grid-template-columns: 1fr;
       }
       .counters {
@@ -495,6 +550,23 @@
           <section class="section">
             <h3>Stale Synthesis</h3>
             <div id="review-stale" class="empty">Load a knowledge base.</div>
+            <div id="review-workspace" class="review-workspace">
+              <h3 id="proposal-title">Proposal</h3>
+              <p id="proposal-meta"></p>
+              <div class="split">
+                <label>Proposed synthesis
+                  <textarea id="proposal-content" spellcheck="false"></textarea>
+                </label>
+                <label>Diff
+                  <pre id="proposal-diff" class="diff"></pre>
+                </label>
+              </div>
+              <div class="actions">
+                <button id="apply-proposal" type="button" class="primary">Apply Proposal</button>
+                <button id="reject-proposal" type="button" class="secondary danger">Reject</button>
+                <button id="close-proposal" type="button" class="secondary">Close</button>
+              </div>
+            </div>
           </section>
           <section class="section">
             <h3>Uncited Sources</h3>
@@ -525,6 +597,7 @@
           <section class="section">
             <h3>Proposal And Ledger Flow</h3>
             <div id="artifact-flow" class="empty">Load a knowledge base.</div>
+            <div id="decision-ledger" style="margin-top:16px"></div>
           </section>
           <aside class="section">
             <h3>Generated Files</h3>
@@ -538,7 +611,7 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const storeKey = 'sovereignBrainConsole';
-    const state = { bases: [], status: null, queue: null, view: 'brief' };
+    const state = { bases: [], status: null, queue: null, decisions: null, proposal: null, view: 'brief' };
     const viewMeta = {
       brief: ['Brain Brief', 'Start here: trust state, recent changes, current review work, and the next action.'],
       review: ['Review Queue', 'Inspect stale synthesis, uncited source candidates, and duplicate active paths.'],
@@ -566,10 +639,17 @@
       $('overall').textContent = text;
       $('overall').className = `status ${cls || ''}`;
     }
-    async function fetchJson(path) {
-      const res = await fetch(api(path), { headers: headers() });
+    async function fetchJson(path, options = {}) {
+      const res = await fetch(api(path), { headers: { ...headers(), ...(options.headers || {}) }, ...options });
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       return res.json();
+    }
+    async function postJson(path, body) {
+      return fetchJson(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {}),
+      });
     }
     function metric(label, value) {
       return `<div class="metric"><span>${esc(label)}</span><strong>${esc(value ?? 0)}</strong></div>`;
@@ -684,7 +764,7 @@
         const sources = (row.linked_sources || []).map(src =>
           `<div class="source"><code>${esc(src.path)}${esc(src.filename)}</code><div class="meta"><span>${esc(src.title || '')}</span><span>${esc(when(src.updated_at))}</span></div><p>${esc(src.excerpt || '')}</p></div>`
         ).join('');
-        return `<article class="item"><h4><code>${esc(row.path)}${esc(row.filename)}</code></h4><p>${esc(row.title || '')}</p><div class="meta"><span>${esc(row.newer_source_count || 0)} newer source(s)</span><span>newest ${esc(when(row.newest_source_update))}</span></div>${sources}</article>`;
+        return `<article class="item"><h4><code>${esc(row.path)}${esc(row.filename)}</code></h4><p>${esc(row.title || '')}</p><div class="meta"><span>${esc(row.newer_source_count || 0)} newer source(s)</span><span>newest ${esc(when(row.newest_source_update))}</span></div><div class="actions"><button type="button" class="secondary" data-propose="${esc(row.id)}">Generate Proposal</button></div>${sources}</article>`;
       });
       $('review-uncited').innerHTML = list(queue.uncited_sources || [], row =>
         `<article class="item"><h4><code>${esc(row.path)}${esc(row.filename)}</code></h4><p>${esc(row.title || '')}</p><div class="meta"><span>${esc(when(row.updated_at))}</span></div><p>${esc(row.excerpt || '')}</p></article>`
@@ -716,7 +796,7 @@
       const kbName = selectedKbName();
       const slug = selectedKbSlug();
       $('artifact-flow').innerHTML = `
-        <p>Generate proposals when the review queue shows stale synthesis. The console does not apply memory repairs from the browser; apply remains an explicit local operation with a diff and ledger entry.</p>
+        <p>Generate proposals from the Review tab, inspect the browser diff, then apply or reject with a ledger entry. The CLI remains available for automation and repeatable demos.</p>
         <pre><code>BASE_URL=${esc(location.origin)} \\
 KB_NAME="${esc(kbName)}" \\
 make propose</code></pre>
@@ -733,6 +813,11 @@ make brief</code></pre>
         metricHtml('Decision ledger', '<code>review-decisions.jsonl</code>'),
         metricHtml('Diff files', '<code>*.proposal.md.diff.md</code>'),
       ].join('');
+      const decisions = state.decisions?.decisions || [];
+      $('decision-ledger').innerHTML = decisions.length ? `
+        <h3>Recent Decisions</h3>
+        ${decisions.map(row => `<article class="item"><h4><span class="badge">${esc(row.action)}</span> <code>${esc(row.path || '')}${esc(row.filename || '')}</code></h4><div class="meta"><span>${esc(row.actor || '')}</span><span>${esc(when(row.created_at))}</span><span>${esc((row.proposal_sha256 || '').slice(0, 12))}</span></div><p>${esc(row.rationale || '')}</p></article>`).join('')}
+      ` : '<h3>Recent Decisions</h3><p class="empty">No browser review decisions recorded yet.</p>';
     }
     function renderAll() {
       renderTrust();
@@ -750,6 +835,7 @@ make brief</code></pre>
       if (state.bases.length === 0) {
         state.status = null;
         state.queue = null;
+        state.decisions = null;
         setStatus('No knowledge bases', 'warn');
         renderAll();
         return;
@@ -760,12 +846,14 @@ make brief</code></pre>
       const kbId = $('kb').value;
       if (!kbId) return;
       setStatus('Loading', 'warn');
-      const [status, queue] = await Promise.all([
+      const [status, queue, decisions] = await Promise.all([
         fetchJson(`/v1/knowledge-bases/${kbId}/maintenance/status`),
         fetchJson(`/v1/knowledge-bases/${kbId}/maintenance/review-queue`),
+        fetchJson(`/v1/knowledge-bases/${kbId}/maintenance/review-decisions`),
       ]);
       state.status = status;
       state.queue = queue;
+      state.decisions = decisions;
       savePrefs();
       renderAll();
     }
@@ -777,6 +865,59 @@ make brief</code></pre>
       $('trust-title').textContent = 'Connection failed';
       $('trust-copy').textContent = err.message;
     }
+    async function generateProposal(docId) {
+      const kbId = $('kb').value;
+      setStatus('Generating proposal', 'warn');
+      const result = await postJson(`/v1/knowledge-bases/${kbId}/maintenance/reviews/${docId}/proposal`, {
+        actor: 'browser-console',
+        rationale: 'Generated from the browser review workspace.',
+      });
+      state.proposal = { docId, ...result };
+      renderProposalWorkspace();
+      state.decisions = await fetchJson(`/v1/knowledge-bases/${kbId}/maintenance/review-decisions`);
+      renderArtifacts();
+      setStatus('Proposal ready', 'ok');
+    }
+    function renderProposalWorkspace() {
+      const workspace = $('review-workspace');
+      if (!state.proposal) {
+        workspace.classList.remove('active');
+        return;
+      }
+      const proposal = state.proposal.proposal;
+      $('proposal-title').textContent = proposal.synthesis_document?.path || 'Proposal';
+      $('proposal-meta').innerHTML = `Decision <code>${esc(state.proposal.decision?.id || '')}</code> · ${esc((proposal.linked_sources || []).length)} linked source(s) · hash <code>${esc((proposal.proposal_sha256 || '').slice(0, 16))}</code>`;
+      $('proposal-content').value = proposal.proposal_content || '';
+      $('proposal-diff').textContent = proposal.diff_content || '';
+      workspace.classList.add('active');
+      workspace.scrollIntoView({ block: 'nearest' });
+    }
+    async function applyProposal() {
+      if (!state.proposal) return;
+      const kbId = $('kb').value;
+      setStatus('Applying proposal', 'warn');
+      await postJson(`/v1/knowledge-bases/${kbId}/maintenance/reviews/${state.proposal.docId}/apply`, {
+        actor: 'browser-console',
+        rationale: 'Accepted from the browser review workspace after diff review.',
+        proposal_content: $('proposal-content').value,
+      });
+      state.proposal = null;
+      $('review-workspace').classList.remove('active');
+      await loadBrain();
+    }
+    async function rejectProposal() {
+      if (!state.proposal) return;
+      const kbId = $('kb').value;
+      setStatus('Rejecting proposal', 'warn');
+      await postJson(`/v1/knowledge-bases/${kbId}/maintenance/reviews/${state.proposal.docId}/reject`, {
+        actor: 'browser-console',
+        rationale: 'Rejected from the browser review workspace.',
+        proposal_content: $('proposal-content').value,
+      });
+      state.proposal = null;
+      $('review-workspace').classList.remove('active');
+      await loadBrain();
+    }
 
     const saved = loadPrefs();
     setView(state.view);
@@ -785,6 +926,16 @@ make brief</code></pre>
     $('refresh').addEventListener('click', () => loadBrain().catch(resetToError));
     $('kb').addEventListener('change', () => loadBrain().catch(resetToError));
     $('remember').addEventListener('change', savePrefs);
+    $('review-stale').addEventListener('click', event => {
+      const docId = event.target?.dataset?.propose;
+      if (docId) generateProposal(docId).catch(resetToError);
+    });
+    $('apply-proposal').addEventListener('click', () => applyProposal().catch(resetToError));
+    $('reject-proposal').addEventListener('click', () => rejectProposal().catch(resetToError));
+    $('close-proposal').addEventListener('click', () => {
+      state.proposal = null;
+      $('review-workspace').classList.remove('active');
+    });
     if ($('api').value && $('token').value) {
       loadBases(saved.kb).catch(resetToError);
     }

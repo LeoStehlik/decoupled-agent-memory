@@ -178,6 +178,8 @@ For normal human operation, prefer the Review tab in `/brain`. Keep `/brain-revi
 
 Each proposal also writes a unified diff and appends a decision entry to `review-decisions.jsonl`, so proposed and applied memory repairs are auditable.
 
+The `/brain` Review tab provides the browser-native version of the same loop. It can generate a proposal for one stale synthesis page, show the proposed content and diff side by side, apply or reject it, and write the decision into the database-backed review ledger.
+
 ### Brain Brief
 
 `/brain-brief` and `make brief` summarize the operating state of one brain: trust status, recent changes, stale synthesis, uncited sources, recent repair activity, and the recommended next action. This is the cockpit view for humans and agents.
