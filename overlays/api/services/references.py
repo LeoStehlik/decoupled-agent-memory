@@ -78,9 +78,12 @@ def build_lookup_maps(
         base = re.sub(r"\.(pdf|docx?|pptx?|xlsx?|csv|html?|md|txt)$", "", fn_lower)
         if base not in base_to_doc:
             base_to_doc[base] = doc
+        full_path = (doc["path"] + doc["filename"]).lower()
+        wiki_path_to_doc.setdefault(full_path, doc)
+        wiki_path_to_doc.setdefault(full_path.lstrip("/"), doc)
         if doc["path"].startswith("/wiki/"):
-            relative = (doc["path"] + doc["filename"]).replace("/wiki/", "", 1)
-            wiki_path_to_doc[relative.lower()] = doc
+            relative = (doc["path"] + doc["filename"]).replace("/wiki/", "", 1).lower()
+            wiki_path_to_doc.setdefault(relative, doc)
 
     return filename_to_doc, base_to_doc, wiki_path_to_doc
 
