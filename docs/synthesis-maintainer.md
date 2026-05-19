@@ -29,12 +29,14 @@ A private deployment should maintain at least:
 - Link source pages with normal markdown links, not code spans, so the graph parser records edges.
 - Do not bulk-import runtime logs, generated JSON state, or large eval artifacts unless a human explicitly asks for that noise.
 - Treat graph edge count as plumbing proof only. It proves pages are connected; it does not prove the synthesis is correct.
-- Mark or regenerate synthesis when linked source pages change after the synthesis timestamp.
+- Mark or regenerate synthesis when linked source pages change after the synthesis timestamp. Routine source syncs must not touch existing synthesis pages merely to update a timestamp, or staleness detection becomes meaningless.
 
 ## Maintenance API
 
 The API overlay exposes `GET /v1/knowledge-bases/{kb_id}/maintenance/status`. It returns active document/wiki/source counts, duplicate active path rows, reference-edge count, uncited sources, stale synthesis pages, and recent document changes. Agents should use this before claiming the brain is current or healthy.
 The MCP overlay also exposes `maintenance_status`, so agents can inspect the same health surface without raw HTTP calls.
+
+Stale synthesis detection intentionally compares synthesis pages only against linked non-wiki source documents. Index/status pages may update on every sync and should not, by themselves, make synthesis look stale.
 
 ## Verification gates
 

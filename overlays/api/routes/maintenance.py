@@ -89,6 +89,7 @@ async def get_maintenance_status(
           AND NOT s.archived
           AND s.path LIKE '/wiki/synthesis/%'
           AND NOT t.archived
+          AND t.path NOT LIKE '/wiki/%'
           AND t.updated_at > s.updated_at
         GROUP BY s.id, s.path, s.filename, s.title, s.updated_at
         ORDER BY newest_source_update DESC
