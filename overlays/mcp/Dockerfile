@@ -8,3 +8,5 @@ COPY auth.py /app/auth.py
 COPY config.py /app/config.py
 COPY server.py /app/server.py
 COPY tools/helpers.py /app/tools/helpers.py
+COPY tools/__init__.py /app/tools/__init__.py
+COPY tools/maintenance.py /app/tools/maintenance.py

@@ -34,6 +34,7 @@ A private deployment should maintain at least:
 ## Maintenance API
 
 The API overlay exposes `GET /v1/knowledge-bases/{kb_id}/maintenance/status`. It returns active document/wiki/source counts, duplicate active path rows, reference-edge count, uncited sources, stale synthesis pages, and recent document changes. Agents should use this before claiming the brain is current or healthy.
+The MCP overlay also exposes `maintenance_status`, so agents can inspect the same health surface without raw HTTP calls.
 
 ## Verification gates
 
