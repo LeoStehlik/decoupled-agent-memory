@@ -65,7 +65,7 @@
       <div class="stack">
         <section class="panel">
           <h2>Stale Synthesis</h2>
-          <p>Generate proposal packages with <code>make propose</code>. Apply only after review.</p>
+          <p>Generate proposal packages with <code>make propose</code>. Use <code>make ledger-demo</code> to prove diffs and acceptance ledger entries.</p>
           <div id="stale" class="empty">Load a knowledge base.</div>
         </section>
         <section class="panel">
@@ -91,7 +91,7 @@
     async function fetchJson(path) { const res = await fetch(api(path), { headers: headers() }); if (!res.ok) throw new Error(`${res.status} ${res.statusText}`); return res.json(); }
     function renderStale(rows) {
       if (!rows || rows.length === 0) return '<p class="empty">None.</p>';
-      return rows.map(row => `<article class="item"><h3><code>${esc(row.path)}${esc(row.filename)}</code></h3><div class="meta"><span>${esc(row.title || '')}</span><span>newest source ${esc(when(row.newest_source_update))}</span><span>${esc(row.newer_source_count || 0)} newer source(s)</span></div><div class="command"><code>KB_NAME="${esc($('kb').selectedOptions[0]?.textContent || '')}" make propose</code></div><div class="sources">${(row.linked_sources || []).map(src => `<div class="source"><code>${esc(src.path)}${esc(src.filename)}</code><div class="meta"><span>${esc(src.title || '')}</span><span>${esc(when(src.updated_at))}</span></div><p class="excerpt">${esc(src.excerpt || '')}</p></div>`).join('')}</div></article>`).join('');
+      return rows.map(row => `<article class="item"><h3><code>${esc(row.path)}${esc(row.filename)}</code></h3><div class="meta"><span>${esc(row.title || '')}</span><span>newest source ${esc(when(row.newest_source_update))}</span><span>${esc(row.newer_source_count || 0)} newer source(s)</span></div><div class="command"><code>KB_NAME="${esc($('kb').selectedOptions[0]?.textContent || '')}" make propose</code></div><div class="meta"><span>Artifacts: proposal markdown, unified diff, JSON metadata, append-only ledger.</span></div><div class="sources">${(row.linked_sources || []).map(src => `<div class="source"><code>${esc(src.path)}${esc(src.filename)}</code><div class="meta"><span>${esc(src.title || '')}</span><span>${esc(when(src.updated_at))}</span></div><p class="excerpt">${esc(src.excerpt || '')}</p></div>`).join('')}</div></article>`).join('');
     }
     function renderSources(rows) {
       if (!rows || rows.length === 0) return '<p class="empty">None.</p>';

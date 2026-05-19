@@ -8,6 +8,8 @@ TOKEN="${TOKEN:-}"
 ANON_KEY="${ANON_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY:-public-anon-key}}"
 KB_NAME="${KB_NAME:-Demo Sovereign Brain}"
 OUT_DIR="${OUT_DIR:-out/review-proposals}"
+ACTOR="${ACTOR:-operator}"
+RATIONALE="${RATIONALE:-Generated from stale synthesis review queue.}"
 APPLY=false
 
 usage() {
@@ -21,6 +23,8 @@ Options:
   --token TOKEN        Existing bearer token
   --kb-name NAME       Knowledge base name or slug, default: $KB_NAME
   --out-dir DIR        Proposal output directory, default: $OUT_DIR
+  --actor NAME         Ledger actor, default: $ACTOR
+  --rationale TEXT     Ledger rationale
   --apply             Apply generated proposals back to stale synthesis pages
 USAGE
 }
@@ -33,6 +37,8 @@ while [ "$#" -gt 0 ]; do
     --token) TOKEN="$2"; shift 2 ;;
     --kb-name) KB_NAME="$2"; shift 2 ;;
     --out-dir) OUT_DIR="$2"; shift 2 ;;
+    --actor) ACTOR="$2"; shift 2 ;;
+    --rationale) RATIONALE="$2"; shift 2 ;;
     --apply) APPLY=true; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -78,7 +84,10 @@ fi
 kb_id="$(printf '%s' "$kb_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
 queue="$(curl -fsS "$API_URL/v1/knowledge-bases/$kb_id/maintenance/review-queue" -H "Authorization: Bearer $TOKEN")"
 
-QUEUE="$queue" KB_JSON="$kb_json" TOKEN="$TOKEN" API_URL="$API_URL" OUT_DIR="$OUT_DIR" APPLY="$APPLY" python3 - <<'PY'
+QUEUE="$queue" KB_JSON="$kb_json" TOKEN="$TOKEN" API_URL="$API_URL" OUT_DIR="$OUT_DIR" APPLY="$APPLY" ACTOR="$ACTOR" RATIONALE="$RATIONALE" python3 - <<'PY'
+import datetime as dt
+import difflib
+import hashlib
 import json
 import os
 import pathlib
@@ -93,6 +102,8 @@ token = os.environ["TOKEN"]
 api_url = os.environ["API_URL"].rstrip("/")
 out_root = pathlib.Path(os.environ["OUT_DIR"]) / kb["slug"]
 apply = os.environ["APPLY"].lower() == "true"
+actor = os.environ["ACTOR"]
+rationale = os.environ["RATIONALE"]
 out_root.mkdir(parents=True, exist_ok=True)
 
 
@@ -127,11 +138,22 @@ def source_link(row):
     return f"{row['path']}{row['filename']}"
 
 
+def sha256(text):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def append_ledger(path, entry):
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(entry, sort_keys=True) + "\n")
+
+
 stale = queue.get("stale_synthesis_pages") or []
+ledger_path = out_root / "review-decisions.jsonl"
 manifest = {
     "knowledge_base": {"id": kb["id"], "name": kb["name"], "slug": kb["slug"]},
     "proposal_count": 0,
     "applied": apply,
+    "ledger_path": str(ledger_path),
     "proposals": [],
 }
 
@@ -175,13 +197,26 @@ for row in stale:
 
     filename = slug(row["filename"].rsplit(".", 1)[0]) + ".proposal.md"
     proposal_path = out_root / filename
+    diff_path = out_root / (filename + ".diff.md")
     meta_path = out_root / (filename + ".json")
     proposal_path.write_text(proposal, encoding="utf-8")
+    diff_lines = difflib.unified_diff(
+        page_content.splitlines(),
+        proposal.splitlines(),
+        fromfile=f"original/{row['path']}{row['filename']}",
+        tofile=f"proposal/{row['path']}{row['filename']}",
+        lineterm="",
+    )
+    diff_text = "\n".join(diff_lines) + "\n"
+    diff_path.write_text(diff_text, encoding="utf-8")
+    proposal_hash = sha256(proposal)
     meta = {
         "status": "applied" if apply else "proposed",
         "synthesis_document_id": row["id"],
         "synthesis_path": f"{row['path']}{row['filename']}",
         "proposal_path": str(proposal_path),
+        "diff_path": str(diff_path),
+        "proposal_sha256": proposal_hash,
         "newest_source_update": row.get("newest_source_update"),
         "linked_sources": [
             {
@@ -194,13 +229,38 @@ for row in stale:
         ],
     }
     meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    ledger_entry = {
+        "timestamp": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "knowledge_base": {"id": kb["id"], "name": kb["name"], "slug": kb["slug"]},
+        "synthesis_document_id": row["id"],
+        "synthesis_path": f"{row['path']}{row['filename']}",
+        "proposal_path": str(proposal_path),
+        "diff_path": str(diff_path),
+        "proposal_sha256": proposal_hash,
+        "linked_source_ids": [src["id"] for src in linked_sources],
+        "linked_sources": [
+            {
+                "id": src["id"],
+                "path": source_link(src),
+                "title": src.get("title"),
+                "updated_at": src.get("updated_at"),
+            }
+            for src in linked_sources
+        ],
+        "action": "applied" if apply else "proposed",
+        "actor": actor,
+        "rationale": rationale,
+    }
     if apply:
         request_json("PUT", f"/v1/documents/{row['id']}/content", {"content": proposal})
+    append_ledger(ledger_path, ledger_entry)
     manifest["proposal_count"] += 1
     manifest["proposals"].append(meta)
     print(f"{'applied' if apply else 'proposed'} {row['path']}{row['filename']} -> {proposal_path}")
+    print(f"diff {diff_path}")
 
 manifest_path = out_root / "manifest.json"
 manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 print(f"Wrote {manifest_path}")
+print(f"Ledger {ledger_path}")
 PY

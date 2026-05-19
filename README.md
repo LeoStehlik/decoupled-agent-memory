@@ -68,6 +68,17 @@ make proposal-demo
 
 The proposal demo generates source-backed markdown proposal packages under `out/review-proposals/`, applies them only in the explicit demo apply step, and then proves the review queue is clean.
 
+Run the ledger demo:
+
+```bash
+BASE_URL=http://KOBE_IP \
+EMAIL=admin@example.com \
+PASSWORD='change-me-long-random-password' \
+make ledger-demo
+```
+
+The ledger demo adds a unified diff and append-only `review-decisions.jsonl` entries for proposal and apply actions.
+
 ## What Is Included
 
 - `docker-compose.yml` for the internal stack.
@@ -83,6 +94,7 @@ The proposal demo generates source-backed markdown proposal packages under `out/
 - `scripts/review-demo.sh` for the end-to-end freshness review demo.
 - `scripts/propose-review.sh` for source-backed synthesis proposal packages.
 - `scripts/proposal-demo.sh` for the proposal/apply proof loop.
+- `scripts/ledger-demo.sh` for proposal diffs plus acceptance-ledger proof.
 - `scripts/smoke-test.sh` for login/API/MCP/maintenance proof.
 - `docs/synthesis-maintainer.md` for the maintained synthesis pattern.
 
@@ -134,6 +146,8 @@ This is the product loop: changed source evidence creates review work, reviewed 
 ### Proposal Packages
 
 `make propose` reads the review queue, fetches stale synthesis plus linked source evidence, and writes proposal markdown plus JSON metadata under `out/review-proposals/`. The first version keeps apply explicit: generated proposals are review artifacts until `scripts/propose-review.sh --apply` is run.
+
+Each proposal also writes a unified diff and appends a decision entry to `review-decisions.jsonl`, so proposed and applied memory repairs are auditable.
 
 ### Sync CLI
 

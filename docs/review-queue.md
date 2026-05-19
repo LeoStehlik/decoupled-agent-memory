@@ -55,6 +55,8 @@ make propose
 
 See `proposals.md` for the proposal/apply loop.
 
+Use `make ledger-demo` to prove the generated diff and append-only decision ledger.
+
 ## API
 
 ```text
