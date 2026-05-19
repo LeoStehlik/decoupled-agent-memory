@@ -31,6 +31,10 @@ A private deployment should maintain at least:
 - Treat graph edge count as plumbing proof only. It proves pages are connected; it does not prove the synthesis is correct.
 - Mark or regenerate synthesis when linked source pages change after the synthesis timestamp.
 
+## Maintenance API
+
+The API overlay exposes `GET /v1/knowledge-bases/{kb_id}/maintenance/status`. It returns active document/wiki/source counts, duplicate active path rows, reference-edge count, uncited sources, stale synthesis pages, and recent document changes. Agents should use this before claiming the brain is current or healthy.
+
 ## Verification gates
 
 After a sync or synthesis update:
