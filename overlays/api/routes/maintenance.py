@@ -40,12 +40,43 @@ def strip_frontmatter(content: str) -> str:
     return (content or "")[match.end():].lstrip()
 
 
+def split_frontmatter(content: str) -> tuple[str, str]:
+    match = _FRONTMATTER_RE.match(content or "")
+    if not match:
+        return "", content or ""
+    return (content or "")[:match.end()], (content or "")[match.end():].lstrip()
+
+
 def document_path(row: dict) -> str:
     return f"{row['path']}{row['filename']}"
 
 
 def sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def clean_existing_synthesis(content: str) -> str:
+    """Remove previous review/proposal artifacts before creating a new candidate."""
+    frontmatter, body = split_frontmatter(content)
+    markers = [
+        "\n## Proposed Review Update",
+        "\n## Latest Source Review",
+        "\n## Source Evidence Snapshot",
+    ]
+    cleaned = body.rstrip()
+    for marker in markers:
+        index = cleaned.find(marker)
+        if index >= 0:
+            cleaned = cleaned[:index].rstrip()
+    return (frontmatter + cleaned).rstrip()
+
+
+def source_excerpt(source: dict, limit: int = 520) -> str:
+    body = strip_frontmatter(source.get("content") or "").strip()
+    body = re.sub(r"\s+", " ", body)
+    if len(body) <= limit:
+        return body
+    return body[:limit].rsplit(" ", 1)[0].rstrip() + "..."
 
 
 async def assert_kb_owner(conn, kb_id: UUID, user_id: str) -> None:
@@ -98,8 +129,9 @@ async def load_synthesis_with_sources(conn, kb_id: UUID, doc_id: UUID, user_id: 
 
 def build_proposal(page: dict, sources: list[dict]) -> dict:
     page_content = page.get("content") or ""
+    cleaned_page = clean_existing_synthesis(page_content)
     evidence_lines = []
-    source_sections = []
+    evidence_map = []
     newest_source_update = None
     newer_source_count = 0
 
@@ -111,25 +143,38 @@ def build_proposal(page: dict, sources: list[dict]) -> dict:
             newer_source_count += 1
         if updated_at and (newest_source_update is None or updated_at > newest_source_update):
             newest_source_update = updated_at
-        evidence_lines.append(f"- `{full_path}` — {title} — updated `{updated_at}`")
-        body = strip_frontmatter(source.get("content") or "").strip()
-        source_sections.append(
-            f"### Source {index}: {title}\n\n"
-            f"Path: `{full_path}`\n\n"
-            f"{body[:1600].strip()}"
+        excerpt = source_excerpt(source)
+        evidence_lines.append(
+            f"- `{full_path}` — {title} — updated `{updated_at}`"
+            + (" — newer than synthesis" if source.get("newer_than_synthesis") else "")
         )
+        evidence_map.append({
+            "section": "Latest Source Review",
+            "source_id": source["id"],
+            "source_path": full_path,
+            "title": title,
+            "updated_at": updated_at,
+            "newer_than_synthesis": source.get("newer_than_synthesis"),
+            "excerpt": excerpt,
+        })
 
-    proposal = page_content.rstrip() + "\n\n"
-    proposal += "## Proposed Review Update\n\n"
-    proposal += "This section is a generated proposal from the current review queue. Review it before treating the synthesis as current.\n\n"
-    proposal += "### Change Rationale\n\n"
-    proposal += f"- `{document_path(page)}` is stale because linked source evidence is newer than the synthesis page.\n"
-    proposal += f"- Newest linked source update: `{newest_source_update}`.\n"
-    proposal += "- The maintained synthesis should incorporate the changed evidence or explicitly record why it was ignored.\n\n"
-    proposal += "### Evidence Reviewed\n\n" + ("\n".join(evidence_lines) or "- No linked sources found.") + "\n\n"
-    proposal += "### Draft Maintenance Note\n\n"
-    proposal += "The linked source evidence has changed since this synthesis was last reviewed. Update the conclusions above where the evidence changes the current operating position, then remove or fold this proposal section into the maintained page.\n\n"
-    proposal += "## Source Evidence Snapshot\n\n" + "\n\n".join(source_sections) + "\n"
+    latest_review = [
+        "## Latest Source Review",
+        "",
+        f"- Reviewed `{len(sources)}` linked source(s).",
+        f"- `{newer_source_count}` source(s) are newer than this synthesis.",
+        f"- Newest linked source update: `{newest_source_update}`.",
+        "",
+        "### Evidence Basis",
+        "",
+        *(evidence_lines or ["- No linked sources found."]),
+        "",
+        "### Maintainer Note",
+        "",
+        "Review the evidence above and edit this synthesis where the operating position, decisions, or open work changed. If the evidence is noise, reject the proposal with the reason so the ledger records why it was ignored.",
+    ]
+
+    proposal = cleaned_page.rstrip() + "\n\n" + "\n".join(latest_review).rstrip() + "\n"
 
     diff = "\n".join(
         difflib.unified_diff(
@@ -165,6 +210,7 @@ def build_proposal(page: dict, sources: list[dict]) -> dict:
         "newest_source_update": newest_source_update,
         "newer_source_count": newer_source_count,
         "linked_sources": linked_sources,
+        "evidence_map": evidence_map,
     }
 
 
@@ -192,6 +238,7 @@ async def insert_decision(conn, kb_id: UUID, user_id: str, doc_id: UUID, action:
         json.dumps({
             "synthesis_document": proposal.get("synthesis_document"),
             "linked_sources": proposal.get("linked_sources", []),
+            "evidence_map": proposal.get("evidence_map", []),
             "newest_source_update": proposal.get("newest_source_update"),
             "newer_source_count": proposal.get("newer_source_count"),
         }, default=str),

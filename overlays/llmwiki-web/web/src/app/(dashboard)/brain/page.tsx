@@ -159,6 +159,8 @@ function BrainPageContent() {
   const [decisions, setDecisions] = React.useState<ReviewDecisions | null>(null)
   const [proposal, setProposal] = React.useState<ProposalState | null>(null)
   const [proposalText, setProposalText] = React.useState('')
+  const [reviewRationale, setReviewRationale] = React.useState('')
+  const [confirmApply, setConfirmApply] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [action, setAction] = React.useState<string | null>(null)
@@ -232,6 +234,8 @@ function BrainPageContent() {
       )
       setProposal({ docId, ...result })
       setProposalText(result.proposal.proposal_content || '')
+      setReviewRationale('')
+      setConfirmApply(false)
       setView('review')
       await loadBrain(selectedKbId)
     } catch (err) {
@@ -250,12 +254,14 @@ function BrainPageContent() {
         method: 'POST',
         body: JSON.stringify({
           actor: 'llm-wiki-ui',
-          rationale: 'Accepted from the integrated Sovereign Brain review workspace.',
+          rationale: reviewRationale.trim() || 'Accepted from the integrated Sovereign Brain review workspace.',
           proposal_content: proposalText,
         }),
       })
       setProposal(null)
       setProposalText('')
+      setReviewRationale('')
+      setConfirmApply(false)
       await loadBrain(selectedKbId)
       if (selectedKb && appliedDocument) {
         router.push(`/wikis/${selectedKb.slug}?page=${encodeURIComponent((appliedDocument.path || '').replace(/^\/wiki\/?/, ''))}`)
@@ -275,12 +281,14 @@ function BrainPageContent() {
         method: 'POST',
         body: JSON.stringify({
           actor: 'llm-wiki-ui',
-          rationale: 'Rejected from the integrated Sovereign Brain review workspace.',
+          rationale: reviewRationale.trim() || 'Rejected from the integrated Sovereign Brain review workspace.',
           proposal_content: proposalText,
         }),
       })
       setProposal(null)
       setProposalText('')
+      setReviewRationale('')
+      setConfirmApply(false)
       await loadBrain(selectedKbId)
     } catch (err) {
       setError((err as Error).message)
@@ -424,6 +432,10 @@ function BrainPageContent() {
             proposal={proposal}
             proposalText={proposalText}
             setProposalText={setProposalText}
+            reviewRationale={reviewRationale}
+            setReviewRationale={setReviewRationale}
+            confirmApply={confirmApply}
+            setConfirmApply={setConfirmApply}
             onGenerate={generateProposal}
             onApply={applyProposal}
             onReject={rejectProposal}
@@ -634,13 +646,17 @@ function BriefView({
 }
 
 function ReviewView({
-  queue, decisions, proposal, proposalText, setProposalText, onGenerate, onApply, onReject, onClose, onOpenWiki, onOpenSourceFolder,
+  queue, decisions, proposal, proposalText, setProposalText, reviewRationale, setReviewRationale, confirmApply, setConfirmApply, onGenerate, onApply, onReject, onClose, onOpenWiki, onOpenSourceFolder,
 }: {
   queue: ReviewQueue | null
   decisions: ReviewDecisions | null
   proposal: ProposalState | null
   proposalText: string
   setProposalText: (value: string) => void
+  reviewRationale: string
+  setReviewRationale: (value: string) => void
+  confirmApply: boolean
+  setConfirmApply: (value: boolean) => void
   onGenerate: (docId: string) => void
   onApply: () => void
   onReject: () => void
@@ -653,6 +669,8 @@ function ReviewView({
   const duplicatePaths = queue?.duplicate_active_paths || []
   const rankedStale = sortAttentionRows(stale)
   const proposalSources = mergeProposalSources(proposal, queue)
+  const evidenceMap = proposal?.proposal.evidence_map || []
+  const originalContent = proposal?.proposal.synthesis_document?.content || ''
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="space-y-4">
@@ -702,7 +720,7 @@ function ReviewView({
       {proposal && (
         <Panel title="Generated proposal">
           <p className="mb-3 text-sm text-muted-foreground">
-            Inspect the proposed synthesis and diff. Edit the proposal before applying if needed.
+            Inspect the replacement synthesis and diff. Edit the proposal before applying if needed.
           </p>
           <div className="mb-3 rounded-md border border-border bg-background p-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -734,10 +752,21 @@ function ReviewView({
                 </div>
               ))}
             </div>
+            {evidenceMap.length > 0 && (
+              <div className="mt-3 border-t border-border pt-3">
+                <h3 className="text-sm font-medium">Evidence map</h3>
+                <Rows rows={evidenceMap.slice(0, 8)} empty="No evidence map recorded." render={(row: Record<string, any>) => (
+                  <div className="border-t border-border py-2 first:border-t-0">
+                    <p className="text-xs font-medium">{row.section || 'Proposal'} ← <code>{row.source_path}</code></p>
+                    {row.excerpt && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{row.excerpt}</p>}
+                  </div>
+                )} />
+              </div>
+            )}
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             <label className="grid gap-2 text-xs text-muted-foreground">
-              Proposed synthesis
+              Replacement synthesis
               <textarea
                 value={proposalText}
                 onChange={(e) => setProposalText(e.target.value)}
@@ -751,8 +780,34 @@ function ReviewView({
               </pre>
             </label>
           </div>
+          <div className="mt-3 rounded-md border border-border bg-background p-3">
+            <div className="grid gap-2 text-sm md:grid-cols-4">
+              <SummaryField label="Target page" value={proposal.proposal.synthesis_document?.path || 'unknown'} />
+              <SummaryField label="Old length" value={`${originalContent.length} chars`} />
+              <SummaryField label="New length" value={`${proposalText.length} chars`} />
+              <SummaryField label="Sources" value={String(proposalSources.length)} />
+            </div>
+            <label className="mt-3 grid gap-2 text-xs text-muted-foreground">
+              Decision rationale
+              <textarea
+                value={reviewRationale}
+                onChange={(e) => setReviewRationale(e.target.value)}
+                placeholder="Optional: why accept or reject this proposal?"
+                className="min-h-20 rounded-md border border-border bg-background p-2 text-sm text-foreground"
+              />
+            </label>
+            <label className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={confirmApply}
+                onChange={(e) => setConfirmApply(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>I reviewed the replacement synthesis, source basis, target page, and diff.</span>
+            </label>
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <button onClick={onApply} className="h-8 rounded-md bg-foreground px-3 text-xs font-medium text-background">Apply proposal</button>
+            <button disabled={!confirmApply} onClick={onApply} className="h-8 rounded-md bg-foreground px-3 text-xs font-medium text-background disabled:cursor-not-allowed disabled:opacity-40">Apply replacement</button>
             <button onClick={onReject} className="h-8 rounded-md border border-destructive/50 px-3 text-xs text-destructive hover:bg-destructive/5">Reject</button>
             <button onClick={onClose} className="h-8 rounded-md border border-border px-3 text-xs text-muted-foreground hover:bg-accent">Close</button>
           </div>
@@ -885,6 +940,15 @@ function Metric({ label, value }: { label: string; value?: number }) {
     <div className="flex justify-between border-t border-border py-2 first:border-t-0">
       <span className="text-sm text-muted-foreground">{label}</span>
       <strong className="text-sm tabular-nums">{value ?? 0}</strong>
+    </div>
+  )
+}
+
+function SummaryField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-card p-2">
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+      <div className="mt-1 truncate text-xs font-medium">{value}</div>
     </div>
   )
 }

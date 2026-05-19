@@ -20,6 +20,9 @@ if [[ ! -d "$SOVEREIGN_REPO/llmwiki-app" ]]; then
   exit 1
 fi
 
+docker build -t sovereign-brain-api:local "$SOVEREIGN_REPO/overlays/api"
+docker build -t sovereign-brain-mcp:local "$SOVEREIGN_REPO/overlays/mcp"
+
 mkdir -p "$LLMWIKI_DEPLOY_DIR"
 rsync -a --delete \
   --exclude .git \
@@ -49,9 +52,16 @@ docker compose -f "$COMPOSE_FILE" build web api mcp
 docker compose -f "$COMPOSE_FILE" up -d web api mcp
 
 for path in /brain /brain-review /wikis; do
-  code="$(curl -sS -o /dev/null -w %{http_code} "http://127.0.0.1:3030${path}")"
+  code=""
+  for attempt in {1..30}; do
+    code="$(curl -sS -o /dev/null -w "%{http_code}" "http://127.0.0.1:3030${path}" 2>/dev/null || true)"
+    if [[ "$code" == "200" ]]; then
+      break
+    fi
+    sleep 1
+  done
   if [[ "$code" != "200" ]]; then
-    echo "Route check failed for ${path}: ${code}" >&2
+    echo "Route check failed for ${path}: ${code:-no response}" >&2
     exit 1
   fi
 done
