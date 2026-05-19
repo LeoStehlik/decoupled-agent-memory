@@ -43,6 +43,7 @@ A Sovereign Brain reduces that tax with three layers:
 - `infra/supabase/nginx.conf` for the auth proxy and the CORS/header fixes
 - `setup-guide.md` and `docs/setup-guide.md` for deployment on internal host
 - `architecture.md` and `docs/architecture.md` for system shape and data flow
+- `docs/synthesis-maintainer.md` for the maintained synthesis layer and verification gates
 - `.env.example` with sanitised placeholders only
 
 ## Core components

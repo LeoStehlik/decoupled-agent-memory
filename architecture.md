@@ -123,7 +123,7 @@ Without that layer, browsers can fail before your application logic even runs.
 ## Design principles
 
 - raw evidence stays immutable
-- synthesis is additive and traceable
+- synthesis is additive, traceable, and maintained as first-class wiki pages
 - agents should update knowledge as they work
 - auth and CORS behavior must be explicit
 - internal templates should stay sanitised and portable
