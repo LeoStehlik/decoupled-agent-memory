@@ -79,6 +79,17 @@ make ledger-demo
 
 The ledger demo adds a unified diff and append-only `review-decisions.jsonl` entries for proposal and apply actions.
 
+Run the brief demo:
+
+```bash
+BASE_URL=http://KOBE_IP \
+EMAIL=admin@example.com \
+PASSWORD='change-me-long-random-password' \
+make brief-demo
+```
+
+The brief demo shows the product surface: what changed, what needs attention, what was repaired, and the next useful action.
+
 ## What Is Included
 
 - `docker-compose.yml` for the internal stack.
@@ -95,6 +106,8 @@ The ledger demo adds a unified diff and append-only `review-decisions.jsonl` ent
 - `scripts/propose-review.sh` for source-backed synthesis proposal packages.
 - `scripts/proposal-demo.sh` for the proposal/apply proof loop.
 - `scripts/ledger-demo.sh` for proposal diffs plus acceptance-ledger proof.
+- `scripts/brain-brief.sh` for a concise operating brief.
+- `scripts/brief-demo.sh` for before/after brief proof.
 - `scripts/smoke-test.sh` for login/API/MCP/maintenance proof.
 - `docs/synthesis-maintainer.md` for the maintained synthesis pattern.
 
@@ -149,6 +162,10 @@ This is the product loop: changed source evidence creates review work, reviewed 
 
 Each proposal also writes a unified diff and appends a decision entry to `review-decisions.jsonl`, so proposed and applied memory repairs are auditable.
 
+### Brain Brief
+
+`/brain-brief` and `make brief` summarize the operating state of one brain: trust status, recent changes, stale synthesis, uncited sources, recent repair activity, and the recommended next action. This is the cockpit view for humans and agents.
+
 ### Sync CLI
 
 `./scripts/sovereign-sync.sh` logs in, creates or finds a knowledge base, upserts markdown source files, upserts synthesis files, optionally rebuilds the graph, and prints maintenance status.
@@ -192,5 +209,6 @@ Use placeholders such as:
 - `docs/setup-guide.md`
 - `docs/review-queue.md`
 - `docs/proposals.md`
+- `docs/brain-brief.md`
 - `docs/synthesis-maintainer.md`
 - `docs/architecture.md`

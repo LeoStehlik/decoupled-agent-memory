@@ -45,3 +45,5 @@ When health reports stale synthesis, open:
 ```
 
 The review page uses `GET /v1/knowledge-bases/{kb_id}/maintenance/review-queue` to show the synthesis pages that need review, the linked source evidence, uncited sources, and duplicate paths.
+
+For the higher-level operating view, open `/brain-brief` or run `make brief`.

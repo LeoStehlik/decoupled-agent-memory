@@ -9,4 +9,5 @@ Start here if you are evaluating or deploying the repo.
 - `synthesis-maintainer.md` — how maintained synthesis works.
 - `architecture.md` — system shape and data flow.
 - `brain-health.md` — health page and maintenance counters.
+- `brain-brief.md` — operating brief for humans and agents.
 - `sync-cli.md` — markdown sync and smoke-test scripts.

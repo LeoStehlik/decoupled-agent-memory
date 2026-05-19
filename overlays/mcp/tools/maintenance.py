@@ -223,3 +223,55 @@ def register(mcp: FastMCP) -> None:
         if not queue["stale_synthesis_pages"] and not queue["uncited_sources"]:
             lines.append("Queue is clean.")
         return "\n".join(lines)
+
+    @mcp.tool(
+        name="brain_brief",
+        description=(
+            "Return a concise Sovereign Brain operating brief: trust status, recent counts, "
+            "stale synthesis, uncited sources, and the recommended next action."
+        ),
+    )
+    async def brain_brief(ctx: Context, knowledge_base: str) -> str:
+        user_id = get_user_id(ctx)
+        kb = await resolve_kb(user_id, knowledge_base)
+        if not kb:
+            return f"Knowledge base '{knowledge_base}' not found."
+        status = await _status(user_id, str(kb["id"]))
+        queue = await _review_queue(user_id, str(kb["id"]))
+        summary = status["summary"]
+        stale_count = len(queue["stale_synthesis_pages"])
+        uncited_count = len(queue["uncited_sources"])
+        duplicate_count = status["duplicate_active_paths"]
+        healthy = stale_count == 0 and duplicate_count == 0
+        lines = [
+            f"**Brain brief for {kb['name']}** (`{kb['slug']}`)",
+            "",
+            f"**Trust status:** {'Healthy' if healthy else 'Needs review'}",
+            "",
+            f"- Active documents: `{summary.get('active_documents', 0)}`",
+            f"- Source documents: `{summary.get('source_documents', 0)}`",
+            f"- Wiki pages: `{summary.get('wiki_pages', 0)}`",
+            f"- Synthesis pages: `{summary.get('synthesis_pages', 0)}`",
+            f"- Reference edges: `{status['reference_edges']}`",
+            f"- Stale synthesis pages: `{stale_count}`",
+            f"- Uncited sources shown: `{uncited_count}`",
+            f"- Duplicate active paths: `{duplicate_count}`",
+            "",
+            "**Needs attention:**",
+        ]
+        if queue["stale_synthesis_pages"]:
+            for row in queue["stale_synthesis_pages"][:8]:
+                lines.append(f"- Review `{row['path']}{row['filename']}`; newest source `{_fmt_ts(row.get('newest_source_update'))}`.")
+        elif duplicate_count:
+            lines.append("- Resolve duplicate active paths before trusting the brain.")
+        else:
+            lines.append("- No stale synthesis or duplicate paths currently block trust.")
+        lines.append("")
+        lines.append("**Recommended next action:**")
+        if queue["stale_synthesis_pages"]:
+            lines.append("- Generate proposal packages, inspect diffs, then apply only after review.")
+        elif queue["uncited_sources"]:
+            lines.append("- Triage uncited sources and decide whether they should update synthesis.")
+        else:
+            lines.append("- Brain is currently healthy. Keep source sync and maintenance checks running.")
+        return "\n".join(lines)

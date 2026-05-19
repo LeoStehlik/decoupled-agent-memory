@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sovereign Brain Brief</title>
+  <style>
+    :root { color-scheme:light dark; --bg:#f8fafc; --panel:#fff; --text:#111827; --muted:#6b7280; --border:#d8dee8; --accent:#0f766e; --warn:#b45309; --danger:#b91c1c; --code:#f1f5f9; }
+    @media (prefers-color-scheme:dark) { :root { --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --border:#273244; --accent:#2dd4bf; --warn:#fbbf24; --danger:#f87171; --code:#1f2937; } }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; font-size:14px; line-height:1.5; }
+    .shell { max-width:1120px; margin:0 auto; padding:32px 20px; }
+    header { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin-bottom:24px; }
+    h1 { margin:0 0 6px; font-size:24px; line-height:1.2; letter-spacing:0; }
+    h2 { margin:0 0 12px; font-size:16px; letter-spacing:0; }
+    h3 { margin:0 0 6px; font-size:14px; letter-spacing:0; }
+    p { margin:0; color:var(--muted); }
+    .controls { display:grid; grid-template-columns:1fr 1fr auto; gap:12px; margin:20px 0 24px; }
+    label { display:grid; gap:6px; color:var(--muted); font-size:13px; }
+    input, select, button { height:36px; border:1px solid var(--border); border-radius:8px; background:var(--panel); color:var(--text); font:inherit; }
+    input, select { padding:0 10px; min-width:0; }
+    button { padding:0 14px; cursor:pointer; background:var(--text); color:var(--bg); border-color:var(--text); align-self:end; }
+    .status { display:inline-flex; align-items:center; height:28px; padding:0 9px; border-radius:6px; border:1px solid var(--border); font-weight:600; }
+    .ok { color:var(--accent); } .warn { color:var(--warn); } .bad { color:var(--danger); }
+    .layout { display:grid; grid-template-columns:280px 1fr; gap:16px; align-items:start; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px; }
+    .stack { display:grid; gap:16px; }
+    .metric { display:flex; justify-content:space-between; gap:16px; padding:9px 0; border-top:1px solid var(--border); }
+    .metric:first-child { border-top:0; }
+    .metric span:first-child { color:var(--muted); }
+    .metric strong { font-variant-numeric:tabular-nums; }
+    .item { padding:12px 0; border-top:1px solid var(--border); }
+    .item:first-child { border-top:0; padding-top:0; }
+    .meta { display:flex; flex-wrap:wrap; gap:8px 12px; color:var(--muted); font-size:13px; margin-top:4px; }
+    code { background:var(--code); border-radius:6px; padding:2px 5px; }
+    .empty { color:var(--muted); padding-top:8px; }
+    @media (max-width:760px) { header, .layout, .controls { display:grid; grid-template-columns:1fr; } button { width:100%; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Sovereign Brain Brief</h1>
+        <p>Current trust state, recent changes, repair activity, and the next useful action.</p>
+      </div>
+      <span id="overall" class="status">Not loaded</span>
+    </header>
+    <section class="controls" aria-label="Connection settings">
+      <label>API origin<input id="api" value="/api" autocomplete="off"></label>
+      <label>Bearer token<input id="token" type="password" placeholder="Paste Supabase or static bearer token" autocomplete="off"></label>
+      <button id="load">Load</button>
+    </section>
+    <section class="layout">
+      <aside class="panel">
+        <h2>Trust Status</h2>
+        <label>Knowledge base<select id="kb"></select></label>
+        <div id="summary" style="margin-top:14px"></div>
+      </aside>
+      <div class="stack">
+        <section class="panel"><h2>What Changed</h2><div id="changes" class="empty">Load a knowledge base.</div></section>
+        <section class="panel"><h2>Needs Attention</h2><div id="attention" class="empty">Load a knowledge base.</div></section>
+        <section class="panel"><h2>Recommended Next Action</h2><div id="next" class="empty">Load a knowledge base.</div></section>
+      </div>
+    </section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { bases: [] };
+    function headers() { const token = $('token').value.trim(); return token ? { Authorization: `Bearer ${token}` } : {}; }
+    function api(path) { return `${$('api').value.replace(/\/$/, '')}${path}`; }
+    function esc(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function when(value) { return String(value || '').replace('T', ' ').slice(0, 19); }
+    function metric(label, value) { return `<div class="metric"><span>${label}</span><strong>${value ?? 0}</strong></div>`; }
+    function setStatus(text, cls) { $('overall').textContent = text; $('overall').className = `status ${cls || ''}`; }
+    async function fetchJson(path) { const res = await fetch(api(path), { headers: headers() }); if (!res.ok) throw new Error(`${res.status} ${res.statusText}`); return res.json(); }
+    function list(rows, render) { if (!rows || rows.length === 0) return '<p class="empty">None.</p>'; return rows.map(render).join(''); }
+    async function loadBases() {
+      setStatus('Loading', 'warn');
+      state.bases = await fetchJson('/v1/knowledge-bases');
+      $('kb').innerHTML = state.bases.map(kb => `<option value="${kb.id}">${esc(kb.name)}</option>`).join('');
+      if (state.bases.length === 0) { setStatus('No knowledge bases', 'warn'); return; }
+      await loadBrief();
+    }
+    async function loadBrief() {
+      const kbId = $('kb').value;
+      const status = await fetchJson(`/v1/knowledge-bases/${kbId}/maintenance/status`);
+      const queue = await fetchJson(`/v1/knowledge-bases/${kbId}/maintenance/review-queue`);
+      const s = status.summary || {};
+      const c = queue.review_counts || {};
+      const bad = (c.stale_synthesis_pages || 0) > 0 || (c.duplicate_active_paths || 0) > 0;
+      setStatus(bad ? 'Needs review' : 'Healthy', bad ? 'warn' : 'ok');
+      $('summary').innerHTML = [
+        metric('Active documents', s.active_documents),
+        metric('Source documents', s.source_documents),
+        metric('Synthesis pages', s.synthesis_pages),
+        metric('Reference edges', status.reference_edges),
+        metric('Stale synthesis', c.stale_synthesis_pages),
+        metric('Uncited sources', c.uncited_sources),
+        metric('Duplicate paths', c.duplicate_active_paths),
+      ].join('');
+      $('changes').innerHTML = list(status.recent_changes, row => `<article class="item"><h3><code>${esc(row.path)}${esc(row.filename)}</code></h3><div class="meta"><span>${esc(row.kind)}</span><span>${esc(when(row.updated_at))}</span></div></article>`);
+      const attention = [];
+      (queue.stale_synthesis_pages || []).forEach(row => attention.push(`<article class="item"><h3>Review <code>${esc(row.path)}${esc(row.filename)}</code></h3><div class="meta"><span>newest source ${esc(when(row.newest_source_update))}</span><span>${esc(row.newer_source_count || 0)} newer source(s)</span></div></article>`));
+      (queue.duplicate_active_paths || []).forEach(row => attention.push(`<article class="item"><h3>Duplicate <code>${esc(row.path)}${esc(row.filename)}</code></h3><div class="meta"><span>${esc(row.count)} active copies</span></div></article>`));
+      $('attention').innerHTML = attention.length ? attention.join('') : '<p class="empty">No stale synthesis or duplicate paths currently block trust.</p>';
+      let next = 'Brain is currently healthy. Keep source sync and maintenance checks running.';
+      if ((queue.stale_synthesis_pages || []).length) next = 'Run make propose, inspect the generated diff, then apply only after review.';
+      else if ((queue.uncited_sources || []).length) next = 'Triage uncited sources and decide whether they should update synthesis or stay as raw evidence.';
+      $('next').innerHTML = `<p>${esc(next)}</p>`;
+    }
+    $('load').addEventListener('click', () => loadBases().catch(err => setStatus(err.message, 'bad')));
+    $('kb').addEventListener('change', () => loadBrief().catch(err => setStatus(err.message, 'bad')));
+  </script>
+</body>
+</html>

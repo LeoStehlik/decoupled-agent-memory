@@ -58,3 +58,5 @@ The human page is served at `/brain-review`.
 Run `make proposal-demo` to extend that loop with generated source-backed proposal files under `out/review-proposals/`.
 
 Run `make ledger-demo` to add unified diffs and an append-only acceptance ledger.
+
+Run `make brief-demo` to show the final product loop as an operating brief before and after repair.
