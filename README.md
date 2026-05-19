@@ -32,15 +32,15 @@ PASSWORD='change-me-long-random-password' \
 make demo
 ```
 
-The demo imports `examples/demo-corpus`, creates maintained synthesis pages, rebuilds the graph, and prints the wiki and health URLs.
+The demo imports `examples/demo-corpus`, creates maintained synthesis pages, rebuilds the graph, and prints the wiki and console URLs.
 
-Open the health page:
+Open the product console:
 
 ```text
-http://KOBE_IP/brain-health
+http://KOBE_IP/brain
 ```
 
-Paste a Supabase user token or trusted static bearer token to inspect one knowledge base. For a password-login demo user, get a token with `BASE_URL=http://KOBE_IP EMAIL=admin@example.com PASSWORD=change-me-long-random-password ./scripts/get-token.sh`.
+Paste a Supabase user token or trusted static bearer token once, pick a knowledge base, then use the tabs for Brief, Review, Health, and Artifacts. For a password-login demo user, get a token with `BASE_URL=http://KOBE_IP EMAIL=admin@example.com PASSWORD=change-me-long-random-password ./scripts/get-token.sh`.
 
 Run the review demo:
 
@@ -95,6 +95,7 @@ The brief demo shows the product surface: what changed, what needs attention, wh
 - `docker-compose.yml` for the internal stack.
 - `overlays/api/` for private hosted API fixes, graph routes, maintenance status, and idempotent document identity support.
 - `overlays/mcp/` for static bearer auth, HS256 Supabase JWT compatibility, host+port MCP DNS-rebinding allowance, and maintenance tools.
+- `static/brain.html` for the unified human product console.
 - `static/brain-health.html` for a lightweight human health surface.
 - `static/brain-review.html` for the human synthesis review queue.
 - `examples/demo-corpus/` for a realistic first-run demo.
@@ -125,6 +126,17 @@ The brief demo shows the product surface: what changed, what needs attention, wh
 
 ## Product Surfaces
 
+### Brain Console
+
+`/brain` is the default human entry point. It combines the brief, review queue, health counters, and proposal/ledger workflow into one console with shared connection state.
+
+Use it to answer the first operator questions:
+
+- Is this brain healthy?
+- What changed recently?
+- What needs review before synthesis can be trusted?
+- What proposal or ledger command should run next?
+
 ### Maintained Synthesis
 
 Synthesis pages live under `/wiki/synthesis/`. They should be short, opinionated, and source-backed. They are not generated filler; they are the current operating position with links to evidence.
@@ -145,6 +157,8 @@ Synthesis pages live under `/wiki/synthesis/`. They should be short, opinionated
 
 This is the trust surface. Do not claim a brain is healthy until this is clean.
 
+For normal human operation, prefer `/brain`. Keep `/brain-health` as a direct technical deep link.
+
 ### Brain Review
 
 `/brain-review` shows the operator queue behind the health warning:
@@ -156,6 +170,8 @@ This is the trust surface. Do not claim a brain is healthy until this is clean.
 
 This is the product loop: changed source evidence creates review work, reviewed synthesis clears the queue, and health returns to clean.
 
+For normal human operation, prefer the Review tab in `/brain`. Keep `/brain-review` as a direct queue deep link.
+
 ### Proposal Packages
 
 `make propose` reads the review queue, fetches stale synthesis plus linked source evidence, and writes proposal markdown plus JSON metadata under `out/review-proposals/`. The first version keeps apply explicit: generated proposals are review artifacts until `scripts/propose-review.sh --apply` is run.
@@ -165,6 +181,8 @@ Each proposal also writes a unified diff and appends a decision entry to `review
 ### Brain Brief
 
 `/brain-brief` and `make brief` summarize the operating state of one brain: trust status, recent changes, stale synthesis, uncited sources, recent repair activity, and the recommended next action. This is the cockpit view for humans and agents.
+
+For normal human operation, prefer the Brief tab in `/brain`. Keep `/brain-brief` as a direct operating-brief deep link.
 
 ### Sync CLI
 
@@ -207,6 +225,7 @@ Use placeholders such as:
 
 - `docs/product-demo.md`
 - `docs/setup-guide.md`
+- `docs/brain-console.md`
 - `docs/review-queue.md`
 - `docs/proposals.md`
 - `docs/brain-brief.md`

@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sovereign Brain Console</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-muted: #f9fafb;
+      --text: #111827;
+      --muted: #667085;
+      --border: #d8dee8;
+      --accent: #0f766e;
+      --warn: #b45309;
+      --danger: #b91c1c;
+      --code: #eef2f7;
+      --focus: #2563eb;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --panel: #111827;
+        --panel-muted: #172033;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --border: #273244;
+        --accent: #2dd4bf;
+        --warn: #fbbf24;
+        --danger: #f87171;
+        --code: #1f2937;
+        --focus: #60a5fa;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    button, input, select {
+      font: inherit;
+    }
+    button {
+      cursor: pointer;
+    }
+    a {
+      color: inherit;
+    }
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
+    }
+    .sidebar {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+    .brand h1 {
+      margin: 0 0 4px;
+      font-size: 18px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    .brand p, p {
+      margin: 0;
+      color: var(--muted);
+    }
+    .nav {
+      display: grid;
+      gap: 4px;
+    }
+    .nav button {
+      width: 100%;
+      height: 34px;
+      text-align: left;
+      border: 0;
+      border-left: 2px solid transparent;
+      border-radius: 6px;
+      padding: 0 10px;
+      background: transparent;
+      color: var(--muted);
+    }
+    .nav button:hover {
+      background: var(--panel-muted);
+      color: var(--text);
+    }
+    .nav button[aria-selected="true"] {
+      border-left-color: var(--accent);
+      background: var(--panel-muted);
+      color: var(--text);
+      font-weight: 600;
+    }
+    .sidebar-footer {
+      margin-top: auto;
+      display: grid;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .main {
+      min-width: 0;
+      padding: 28px 28px 40px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+    .topbar h2 {
+      margin: 0 0 4px;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .status.ok { color: var(--accent); }
+    .status.warn { color: var(--warn); }
+    .status.bad { color: var(--danger); }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .connection {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) minmax(220px, 1fr) minmax(180px, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 16px;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    input, select {
+      min-width: 0;
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 0 10px;
+    }
+    input:focus, select:focus, button:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+    .button-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .primary, .secondary {
+      height: 36px;
+      border-radius: 8px;
+      padding: 0 12px;
+      white-space: nowrap;
+    }
+    .primary {
+      border: 1px solid var(--text);
+      background: var(--text);
+      color: var(--bg);
+    }
+    .secondary {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+    }
+    .remember {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 10px;
+    }
+    .remember input {
+      width: 15px;
+      height: 15px;
+      padding: 0;
+    }
+    .trust {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 16px;
+      border-left: 3px solid var(--border);
+    }
+    .trust.ok { border-left-color: var(--accent); }
+    .trust.warn { border-left-color: var(--warn); }
+    .trust.bad { border-left-color: var(--danger); }
+    .trust h3, .section h3, .item h4 {
+      margin: 0 0 4px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+    .counters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .counter {
+      min-width: 86px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: var(--panel-muted);
+    }
+    .counter span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .counter strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 17px;
+      font-variant-numeric: tabular-nums;
+    }
+    .view {
+      display: none;
+    }
+    .view.active {
+      display: block;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+      gap: 16px;
+      align-items: start;
+    }
+    .stack {
+      display: grid;
+      gap: 16px;
+    }
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .item {
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
+    }
+    .item:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 9px 0;
+      border-top: 1px solid var(--border);
+    }
+    .metric:first-child {
+      border-top: 0;
+    }
+    .metric span:first-child {
+      color: var(--muted);
+    }
+    .metric strong {
+      font-variant-numeric: tabular-nums;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      text-align: left;
+      padding: 9px 8px;
+      border-top: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 500;
+    }
+    code {
+      background: var(--code);
+      border-radius: 6px;
+      padding: 2px 5px;
+    }
+    pre {
+      margin: 10px 0 0;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--code);
+      padding: 10px;
+      color: var(--text);
+    }
+    .source {
+      margin-top: 10px;
+      border-left: 2px solid var(--border);
+      padding-left: 10px;
+    }
+    .empty {
+      color: var(--muted);
+      padding-top: 8px;
+    }
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .links a {
+      color: var(--muted);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .nav {
+        display: flex;
+        flex-wrap: wrap;
+      }
+      .nav button {
+        width: auto;
+        border-left: 0;
+        border-bottom: 2px solid transparent;
+      }
+      .nav button[aria-selected="true"] {
+        border-left-color: transparent;
+        border-bottom-color: var(--accent);
+      }
+      .sidebar-footer {
+        margin-top: 0;
+      }
+      .connection, .grid, .trust {
+        grid-template-columns: 1fr;
+      }
+      .counters {
+        justify-content: flex-start;
+      }
+    }
+    @media (max-width: 640px) {
+      .main {
+        padding: 20px 14px 28px;
+      }
+      .topbar {
+        display: grid;
+      }
+      .button-row {
+        justify-content: stretch;
+      }
+      .primary, .secondary {
+        width: 100%;
+      }
+      .counter {
+        min-width: calc(50% - 4px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>Sovereign Brain</h1>
+        <p>Private source-backed memory for agents.</p>
+      </div>
+      <nav class="nav" aria-label="Brain console">
+        <button type="button" data-view="brief" aria-selected="true">Brief</button>
+        <button type="button" data-view="review" aria-selected="false">Review</button>
+        <button type="button" data-view="health" aria-selected="false">Health</button>
+        <button type="button" data-view="artifacts" aria-selected="false">Artifacts</button>
+      </nav>
+      <div class="sidebar-footer">
+        <span id="sidebar-kb">No knowledge base loaded.</span>
+        <span id="sidebar-updated">Load the console to inspect trust state.</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h2 id="view-title">Brain Brief</h2>
+          <p id="view-copy">Start here: trust state, recent changes, current review work, and the next action.</p>
+        </div>
+        <span id="overall" class="status">Not loaded</span>
+      </div>
+
+      <section class="panel" aria-label="Connection settings">
+        <div class="connection">
+          <label>API origin
+            <input id="api" value="/api" autocomplete="off">
+          </label>
+          <label>Bearer token
+            <input id="token" type="password" placeholder="Paste Supabase or static bearer token" autocomplete="off">
+          </label>
+          <label>Knowledge base
+            <select id="kb"></select>
+          </label>
+          <div class="button-row">
+            <button id="load" class="primary" type="button">Load</button>
+            <button id="refresh" class="secondary" type="button">Refresh</button>
+          </div>
+        </div>
+        <label class="remember">
+          <input id="remember" type="checkbox" checked>
+          Remember connection settings in this browser.
+        </label>
+      </section>
+
+      <section id="trust" class="panel trust" aria-label="Trust summary">
+        <div>
+          <h3 id="trust-title">No brain loaded</h3>
+          <p id="trust-copy">Load a knowledge base to see whether synthesis is current and source-backed.</p>
+        </div>
+        <div id="trust-counters" class="counters"></div>
+      </section>
+
+      <section id="view-brief" class="view active">
+        <div class="grid">
+          <div class="stack">
+            <section class="section">
+              <h3>What Changed</h3>
+              <div id="brief-changes" class="empty">Load a knowledge base.</div>
+            </section>
+            <section class="section">
+              <h3>Needs Attention</h3>
+              <div id="brief-attention" class="empty">Load a knowledge base.</div>
+            </section>
+          </div>
+          <aside class="stack">
+            <section class="section">
+              <h3>Next Action</h3>
+              <div id="brief-next" class="empty">Load a knowledge base.</div>
+            </section>
+            <section class="section">
+              <h3>Operator Links</h3>
+              <div class="links">
+                <a href="/brain-brief">Legacy brief</a>
+                <a href="/brain-review">Legacy review</a>
+                <a href="/brain-health">Legacy health</a>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="view-review" class="view">
+        <div class="stack">
+          <section class="section">
+            <h3>Stale Synthesis</h3>
+            <div id="review-stale" class="empty">Load a knowledge base.</div>
+          </section>
+          <section class="section">
+            <h3>Uncited Sources</h3>
+            <div id="review-uncited" class="empty">Load a knowledge base.</div>
+          </section>
+          <section class="section">
+            <h3>Duplicate Paths</h3>
+            <div id="review-duplicates" class="empty">Load a knowledge base.</div>
+          </section>
+        </div>
+      </section>
+
+      <section id="view-health" class="view">
+        <div class="grid">
+          <section class="section">
+            <h3>Recent Changes</h3>
+            <div id="health-changes" class="empty">Load a knowledge base.</div>
+          </section>
+          <aside class="section">
+            <h3>Maintenance Counters</h3>
+            <div id="health-metrics" class="empty">Load a knowledge base.</div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="view-artifacts" class="view">
+        <div class="grid">
+          <section class="section">
+            <h3>Proposal And Ledger Flow</h3>
+            <div id="artifact-flow" class="empty">Load a knowledge base.</div>
+          </section>
+          <aside class="section">
+            <h3>Generated Files</h3>
+            <div id="artifact-paths" class="empty">Load a knowledge base.</div>
+          </aside>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const storeKey = 'sovereignBrainConsole';
+    const state = { bases: [], status: null, queue: null, view: 'brief' };
+    const viewMeta = {
+      brief: ['Brain Brief', 'Start here: trust state, recent changes, current review work, and the next action.'],
+      review: ['Review Queue', 'Inspect stale synthesis, uncited source candidates, and duplicate active paths.'],
+      health: ['Health', 'Raw maintenance counters and recent source/wiki activity.'],
+      artifacts: ['Artifacts', 'Proposal, diff, and acceptance-ledger commands for reviewed memory changes.'],
+    };
+
+    function esc(value) {
+      return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function when(value) {
+      return String(value || '').replace('T', ' ').slice(0, 19);
+    }
+    function apiBase() {
+      return $('api').value.replace(/\/$/, '');
+    }
+    function api(path) {
+      return `${apiBase()}${path}`;
+    }
+    function headers() {
+      const token = $('token').value.trim();
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    }
+    function setStatus(text, cls) {
+      $('overall').textContent = text;
+      $('overall').className = `status ${cls || ''}`;
+    }
+    async function fetchJson(path) {
+      const res = await fetch(api(path), { headers: headers() });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return res.json();
+    }
+    function metric(label, value) {
+      return `<div class="metric"><span>${esc(label)}</span><strong>${esc(value ?? 0)}</strong></div>`;
+    }
+    function metricHtml(label, value) {
+      return `<div class="metric"><span>${esc(label)}</span><strong>${value}</strong></div>`;
+    }
+    function counter(label, value) {
+      return `<div class="counter"><span>${esc(label)}</span><strong>${esc(value ?? 0)}</strong></div>`;
+    }
+    function table(rows, cols) {
+      if (!rows || rows.length === 0) return '<p class="empty">None.</p>';
+      const head = cols.map(c => `<th>${esc(c.label)}</th>`).join('');
+      const body = rows.map(row => `<tr>${cols.map(c => `<td>${c.render(row)}</td>`).join('')}</tr>`).join('');
+      return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+    }
+    function list(rows, render) {
+      if (!rows || rows.length === 0) return '<p class="empty">None.</p>';
+      return rows.map(render).join('');
+    }
+    function selectedKbName() {
+      return $('kb').selectedOptions[0]?.textContent || '';
+    }
+    function selectedKbSlug() {
+      return selectedKbName().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'knowledge-base';
+    }
+    function savePrefs() {
+      if (!$('remember').checked) {
+        localStorage.removeItem(storeKey);
+        return;
+      }
+      localStorage.setItem(storeKey, JSON.stringify({
+        api: $('api').value,
+        token: $('token').value,
+        kb: $('kb').value,
+        view: state.view,
+        remember: true,
+      }));
+    }
+    function loadPrefs() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storeKey) || '{}');
+        if (saved.api) $('api').value = saved.api;
+        if (saved.token) $('token').value = saved.token;
+        if (saved.remember === false) $('remember').checked = false;
+        if (saved.view && viewMeta[saved.view]) state.view = saved.view;
+        return saved;
+      } catch {
+        return {};
+      }
+    }
+    function setView(view) {
+      state.view = view;
+      document.querySelectorAll('.nav button').forEach(button => {
+        button.setAttribute('aria-selected', String(button.dataset.view === view));
+      });
+      document.querySelectorAll('.view').forEach(panel => {
+        panel.classList.toggle('active', panel.id === `view-${view}`);
+      });
+      $('view-title').textContent = viewMeta[view][0];
+      $('view-copy').textContent = viewMeta[view][1];
+      savePrefs();
+    }
+    function renderTrust() {
+      const status = state.status || {};
+      const queue = state.queue || {};
+      const s = status.summary || {};
+      const c = queue.review_counts || {};
+      const stale = c.stale_synthesis_pages || 0;
+      const dupes = c.duplicate_active_paths || 0;
+      const uncited = c.uncited_sources || 0;
+      const bad = stale > 0 || dupes > 0;
+      const cls = bad ? 'warn' : (state.status ? 'ok' : '');
+      $('trust').className = `panel trust ${cls}`;
+      $('trust-title').textContent = state.status ? (bad ? 'Review needed before trusting this brain' : 'Brain is healthy') : 'No brain loaded';
+      $('trust-copy').textContent = state.status
+        ? (bad ? 'Source evidence changed or duplicate active paths exist. Review the queue before treating synthesis as current.' : 'No stale synthesis or duplicate active paths are currently blocking trust.')
+        : 'Load a knowledge base to see whether synthesis is current and source-backed.';
+      $('trust-counters').innerHTML = state.status ? [
+        counter('Sources', s.source_documents),
+        counter('Synthesis', s.synthesis_pages),
+        counter('Stale', stale),
+        counter('Uncited', uncited),
+        counter('Dupes', dupes),
+      ].join('') : '';
+      setStatus(state.status ? (bad ? 'Needs review' : 'Healthy') : 'Not loaded', state.status ? (bad ? 'warn' : 'ok') : '');
+      $('sidebar-kb').textContent = state.status ? selectedKbName() : 'No knowledge base loaded.';
+      $('sidebar-updated').textContent = state.status ? `Updated ${when(new Date().toISOString())}` : 'Load the console to inspect trust state.';
+    }
+    function renderBrief() {
+      const status = state.status || {};
+      const queue = state.queue || {};
+      $('brief-changes').innerHTML = list(status.recent_changes || [], row =>
+        `<article class="item"><h4><code>${esc(row.path)}${esc(row.filename)}</code></h4><div class="meta"><span>${esc(row.kind)}</span><span>${esc(when(row.updated_at))}</span></div></article>`
+      );
+      const attention = [];
+      (queue.stale_synthesis_pages || []).forEach(row => attention.push(
+        `<article class="item"><h4>Review <code>${esc(row.path)}${esc(row.filename)}</code></h4><p>${esc(row.title || '')}</p><div class="meta"><span>${esc(row.newer_source_count || 0)} newer source(s)</span><span>newest ${esc(when(row.newest_source_update))}</span></div></article>`
+      ));
+      (queue.duplicate_active_paths || []).forEach(row => attention.push(
+        `<article class="item"><h4>Resolve duplicate <code>${esc(row.path)}${esc(row.filename)}</code></h4><div class="meta"><span>${esc(row.count)} active copies</span><span>newest ${esc(when(row.newest_update))}</span></div></article>`
+      ));
+      $('brief-attention').innerHTML = attention.length ? attention.join('') : '<p class="empty">No stale synthesis or duplicate paths currently block trust.</p>';
+      let next = 'Brain is currently healthy. Keep source sync and maintenance checks running.';
+      if ((queue.stale_synthesis_pages || []).length) next = 'Generate proposal packages, inspect the diffs, then apply only after review.';
+      else if ((queue.uncited_sources || []).length) next = 'Triage uncited sources and decide whether they should update synthesis or remain raw evidence.';
+      $('brief-next').innerHTML = `<p>${esc(next)}</p>`;
+    }
+    function renderReview() {
+      const queue = state.queue || {};
+      $('review-stale').innerHTML = list(queue.stale_synthesis_pages || [], row => {
+        const sources = (row.linked_sources || []).map(src =>
+          `<div class="source"><code>${esc(src.path)}${esc(src.filename)}</code><div class="meta"><span>${esc(src.title || '')}</span><span>${esc(when(src.updated_at))}</span></div><p>${esc(src.excerpt || '')}</p></div>`
+        ).join('');
+        return `<article class="item"><h4><code>${esc(row.path)}${esc(row.filename)}</code></h4><p>${esc(row.title || '')}</p><div class="meta"><span>${esc(row.newer_source_count || 0)} newer source(s)</span><span>newest ${esc(when(row.newest_source_update))}</span></div>${sources}</article>`;
+      });
+      $('review-uncited').innerHTML = list(queue.uncited_sources || [], row =>
+        `<article class="item"><h4><code>${esc(row.path)}${esc(row.filename)}</code></h4><p>${esc(row.title || '')}</p><div class="meta"><span>${esc(when(row.updated_at))}</span></div><p>${esc(row.excerpt || '')}</p></article>`
+      );
+      $('review-duplicates').innerHTML = list(queue.duplicate_active_paths || [], row =>
+        `<article class="item"><h4><code>${esc(row.path)}${esc(row.filename)}</code></h4><div class="meta"><span>${esc(row.count)} active copies</span><span>newest ${esc(when(row.newest_update))}</span></div></article>`
+      );
+    }
+    function renderHealth() {
+      const status = state.status || {};
+      const s = status.summary || {};
+      $('health-metrics').innerHTML = [
+        metric('Active documents', s.active_documents),
+        metric('Source documents', s.source_documents),
+        metric('Wiki pages', s.wiki_pages),
+        metric('Synthesis pages', s.synthesis_pages),
+        metric('Reference edges', status.reference_edges),
+        metric('Duplicate active paths', status.duplicate_active_paths),
+        metric('Stale synthesis pages', status.stale_synthesis_pages?.length || 0),
+        metric('Uncited sources', status.uncited_sources?.length || 0),
+      ].join('');
+      $('health-changes').innerHTML = table(status.recent_changes || [], [
+        { label: 'Kind', render: row => esc(row.kind || '') },
+        { label: 'Path', render: row => `<code>${esc(row.path)}${esc(row.filename)}</code>` },
+        { label: 'Updated', render: row => esc(when(row.updated_at)) },
+      ]);
+    }
+    function renderArtifacts() {
+      const kbName = selectedKbName();
+      const slug = selectedKbSlug();
+      $('artifact-flow').innerHTML = `
+        <p>Generate proposals when the review queue shows stale synthesis. The console does not apply memory repairs from the browser; apply remains an explicit local operation with a diff and ledger entry.</p>
+        <pre><code>BASE_URL=${esc(location.origin)} \\
+KB_NAME="${esc(kbName)}" \\
+make propose</code></pre>
+        <pre><code>BASE_URL=${esc(location.origin)} \\
+KB_NAME="${esc(kbName)}" \\
+./scripts/propose-review.sh --apply</code></pre>
+        <pre><code>BASE_URL=${esc(location.origin)} \\
+KB_NAME="${esc(kbName)}" \\
+make brief</code></pre>
+      `;
+      $('artifact-paths').innerHTML = [
+        metricHtml('Proposal folder', `<code>out/review-proposals/${esc(slug)}/</code>`),
+        metricHtml('Brief folder', `<code>out/brain-briefs/${esc(slug)}/</code>`),
+        metricHtml('Decision ledger', '<code>review-decisions.jsonl</code>'),
+        metricHtml('Diff files', '<code>*.proposal.md.diff.md</code>'),
+      ].join('');
+    }
+    function renderAll() {
+      renderTrust();
+      if (!state.status || !state.queue) return;
+      renderBrief();
+      renderReview();
+      renderHealth();
+      renderArtifacts();
+    }
+    async function loadBases(preferredKb) {
+      setStatus('Loading', 'warn');
+      state.bases = await fetchJson('/v1/knowledge-bases');
+      $('kb').innerHTML = state.bases.map(kb => `<option value="${esc(kb.id)}">${esc(kb.name)}</option>`).join('');
+      if (preferredKb && state.bases.some(kb => kb.id === preferredKb)) $('kb').value = preferredKb;
+      if (state.bases.length === 0) {
+        state.status = null;
+        state.queue = null;
+        setStatus('No knowledge bases', 'warn');
+        renderAll();
+        return;
+      }
+      await loadBrain();
+    }
+    async function loadBrain() {
+      const kbId = $('kb').value;
+      if (!kbId) return;
+      setStatus('Loading', 'warn');
+      const [status, queue] = await Promise.all([
+        fetchJson(`/v1/knowledge-bases/${kbId}/maintenance/status`),
+        fetchJson(`/v1/knowledge-bases/${kbId}/maintenance/review-queue`),
+      ]);
+      state.status = status;
+      state.queue = queue;
+      savePrefs();
+      renderAll();
+    }
+    function resetToError(err) {
+      state.status = null;
+      state.queue = null;
+      renderAll();
+      setStatus(err.message, 'bad');
+      $('trust-title').textContent = 'Connection failed';
+      $('trust-copy').textContent = err.message;
+    }
+
+    const saved = loadPrefs();
+    setView(state.view);
+    document.querySelectorAll('.nav button').forEach(button => button.addEventListener('click', () => setView(button.dataset.view)));
+    $('load').addEventListener('click', () => loadBases($('kb').value || saved.kb).catch(resetToError));
+    $('refresh').addEventListener('click', () => loadBrain().catch(resetToError));
+    $('kb').addEventListener('change', () => loadBrain().catch(resetToError));
+    $('remember').addEventListener('change', savePrefs);
+    if ($('api').value && $('token').value) {
+      loadBases(saved.kb).catch(resetToError);
+    }
+  </script>
+</body>
+</html>

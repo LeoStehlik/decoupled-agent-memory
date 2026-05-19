@@ -1,4 +1,4 @@
-.PHONY: demo review-demo proposal-demo ledger-demo brief-demo review propose brief smoke
+.PHONY: demo review-demo proposal-demo ledger-demo brief-demo review propose brief smoke ui-smoke
 
 demo:
 	./scripts/bootstrap-demo.sh
@@ -26,3 +26,6 @@ brief-demo:
 
 smoke:
 	./scripts/smoke-test.sh
+
+ui-smoke:
+	./scripts/ui-smoke.sh
