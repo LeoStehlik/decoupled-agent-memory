@@ -140,6 +140,76 @@ async def _review_queue(user_id: str, kb_id: str) -> dict:
     return {"stale_synthesis_pages": stale, "uncited_sources": uncited}
 
 
+def _change_category(row: dict) -> tuple[str, str]:
+    text = " ".join([
+        row.get("path") or "",
+        row.get("filename") or "",
+        row.get("title") or "",
+        row.get("excerpt") or "",
+    ]).lower()
+    if any(word in text for word in ["decision", "decided", "policy", "rule", "direction", "canonical", "source of truth"]):
+        return "changed decision", "Decision or operating-policy evidence changed."
+    if any(word in text for word in ["risk", "blocked", "blocker", "failure", "bug", "broken", "regression", "unsafe", "missing"]):
+        return "risk", "Risk, blocker, or failure evidence changed."
+    if any(word in text for word in ["open item", "todo", "next action", "follow-up", "remaining work", "needs review"]):
+        return "open question", "Open work or unresolved-question evidence changed."
+    if any(word in text for word in ["verified", "pushed", "deployed", "implemented", "added", "fixed", "completed", "done"]):
+        return "new fact", "New implementation or verification evidence appeared."
+    return "background noise", "Linked evidence changed, but the excerpt does not clearly signal a decision, risk, or open item."
+
+
+async def _changed_evidence(user_id: str, kb_id: str, limit: int = 5) -> list[dict]:
+    pages = await scoped_query(
+        user_id,
+        """
+        SELECT DISTINCT s.id::text, s.path, s.filename, s.title, s.updated_at,
+               max(t.updated_at) AS newest_source_update,
+               count(DISTINCT t.id) FILTER (WHERE t.updated_at > s.updated_at) AS newer_source_count
+        FROM documents s
+        JOIN document_references r ON r.source_document_id = s.id
+        JOIN documents t ON t.id = r.target_document_id
+        WHERE s.knowledge_base_id = $1
+          AND s.user_id = $2
+          AND NOT s.archived
+          AND s.path LIKE '/wiki/synthesis/%'
+          AND NOT t.archived
+          AND t.path NOT LIKE '/wiki/%'
+          AND t.updated_at > s.updated_at
+        GROUP BY s.id, s.path, s.filename, s.title, s.updated_at
+        ORDER BY newest_source_update DESC
+        LIMIT $3
+        """,
+        kb_id, user_id, limit,
+    )
+    result = []
+    for page in pages:
+        sources = await scoped_query(
+            user_id,
+            """
+            SELECT t.path, t.filename, t.title, t.updated_at,
+                   left(regexp_replace(coalesce(t.content, ''), '\\s+', ' ', 'g'), 320) AS excerpt,
+                   (t.updated_at > s.updated_at) AS newer_than_synthesis
+            FROM document_references r
+            JOIN documents s ON s.id = r.source_document_id
+            JOIN documents t ON t.id = r.target_document_id
+            WHERE s.id = $1
+              AND s.user_id = $2
+              AND NOT t.archived
+              AND t.path NOT LIKE '/wiki/%'
+            ORDER BY (t.updated_at > s.updated_at) DESC, t.updated_at DESC
+            LIMIT 6
+            """,
+            page["id"], user_id,
+        )
+        changes = []
+        for source in sources:
+            source_row = dict(source)
+            category, reason = _change_category(source_row)
+            changes.append({**source_row, "category": category, "reason": reason})
+        result.append({**page, "changes": changes})
+    return result
+
+
 def _fmt_ts(value) -> str:
     if hasattr(value, "strftime"):
         return value.strftime("%Y-%m-%d %H:%M")
@@ -274,4 +344,40 @@ def register(mcp: FastMCP) -> None:
             lines.append("- Triage uncited sources and decide whether they should update synthesis.")
         else:
             lines.append("- Brain is currently healthy. Keep source sync and maintenance checks running.")
+        return "\n".join(lines)
+
+    @mcp.tool(
+        name="changed_evidence_brief",
+        description=(
+            "Explain what source evidence changed since synthesis was last reviewed. "
+            "Use this before updating memory so the maintainer sees new facts, changed "
+            "decisions, risks, open questions, and background noise."
+        ),
+    )
+    async def changed_evidence_brief(ctx: Context, knowledge_base: str, limit: int = 5) -> str:
+        user_id = get_user_id(ctx)
+        kb = await resolve_kb(user_id, knowledge_base)
+        if not kb:
+            return f"Knowledge base '{knowledge_base}' not found."
+        pages = await _changed_evidence(user_id, str(kb["id"]), min(max(limit, 1), 10))
+        lines = [
+            f"**Changed evidence brief for {kb['name']}** (`{kb['slug']}`)",
+            "",
+        ]
+        if not pages:
+            lines.append("No stale synthesis pages have newer linked source evidence.")
+            return "\n".join(lines)
+        for page in pages:
+            page_path = f"{page['path']}{page['filename']}"
+            lines.append(f"## `{page_path}`")
+            lines.append(
+                f"- Priority reason: maintained synthesis has `{page.get('newer_source_count', 0)}` newer linked source(s); "
+                f"newest source `{_fmt_ts(page.get('newest_source_update'))}`."
+            )
+            for change in page["changes"][:5]:
+                source_path = f"{change['path']}{change['filename']}"
+                lines.append(f"- **{change['category']}** from `{source_path}` updated `{_fmt_ts(change.get('updated_at'))}`: {change['reason']}")
+                if change.get("excerpt"):
+                    lines.append(f"  - Evidence: {change['excerpt']}")
+            lines.append("")
         return "\n".join(lines)

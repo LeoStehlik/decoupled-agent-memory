@@ -127,6 +127,11 @@ function mergeProposalSources(proposal: ProposalState | null, queue: ReviewQueue
   }))
 }
 
+function categoryLabel(value?: string) {
+  if (!value) return 'Changed evidence'
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
 function latestAction(decisions: ReviewDecisions | null) {
   return decisions?.decisions?.[0]?.action || null
 }
@@ -546,7 +551,7 @@ function BriefView({
                 <h3 className="text-sm font-medium">Next attention</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {firstWork
-                    ? `${attentionKind(firstWork)} needs review: ${docPath(firstWork)} has ${countLabel(firstWork.newer_source_count || 0, 'newer source')}.`
+                    ? firstWork.priority_reason || `${attentionKind(firstWork)} needs review: ${docPath(firstWork)} has ${countLabel(firstWork.newer_source_count || 0, 'newer source')}.`
                     : topDuplicate
                     ? `Resolve duplicate active path ${docPath(topDuplicate)} before trusting search or graph output.`
                     : topUncited.length
@@ -589,6 +594,11 @@ function BriefView({
                     <p className="mt-1 text-xs text-muted-foreground">
                       {attentionKind(row)} · {countLabel(row.newer_source_count || 0, 'newer source')} · newest {formatDate(row.newest_source_update)}
                     </p>
+                    {row.changed_evidence_digest?.maintainer_brief && (
+                      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                        {row.changed_evidence_digest.maintainer_brief}
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <button onClick={() => onOpenWiki(row)} className="h-8 rounded-md border border-border px-3 text-xs hover:bg-accent">Open</button>
@@ -684,6 +694,7 @@ function ReviewView({
                 <p className="mt-1 text-xs text-muted-foreground">
                   {attentionKind(row)} · {countLabel(row.newer_source_count || 0, 'newer source')} · newest {formatDate(row.newest_source_update)}
                 </p>
+                {row.priority_reason && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{row.priority_reason}</p>}
                 {latestDecision(decisions, row.id) && (
                   <p className="mt-1 text-xs text-muted-foreground">
                     last decision: {latestDecision(decisions, row.id)?.action} · {formatDate(latestDecision(decisions, row.id)?.created_at)}
@@ -705,6 +716,9 @@ function ReviewView({
                       <code>{docPath(source)}</code>
                       <span className="ml-2">{formatDate(source.updated_at)}</span>
                     </div>
+                    <span className="rounded-md border border-border bg-muted/40 px-2 py-1 text-[11px] text-foreground">
+                      {categoryLabel(source.change_category)}
+                    </span>
                     <button onClick={() => onOpenSourceFolder(source)} className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2 text-[11px] text-foreground hover:bg-accent">
                       Source folder <ExternalLink className="size-3" />
                     </button>
@@ -722,6 +736,28 @@ function ReviewView({
           <p className="mb-3 text-sm text-muted-foreground">
             Inspect the replacement synthesis and diff. Edit the proposal before applying if needed.
           </p>
+          {proposal.proposal.changed_evidence_digest && (
+            <div className="mb-3 rounded-md border border-border bg-background p-3">
+              <h3 className="text-sm font-medium">Maintainer brief</h3>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                {proposal.proposal.changed_evidence_digest.maintainer_brief}
+              </p>
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {(proposal.proposal.changed_evidence_digest.changes || []).slice(0, 4).map((change: Record<string, any>) => (
+                  <div key={change.source_id} className="rounded-md border border-border bg-card p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <p className="min-w-0 truncate text-xs font-medium"><code>{change.source_path}</code></p>
+                      <span className="rounded-md border border-border bg-muted/40 px-2 py-1 text-[11px]">
+                        {categoryLabel(change.category)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{change.reason}</p>
+                    {change.excerpt && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{change.excerpt}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="mb-3 rounded-md border border-border bg-background p-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
@@ -741,7 +777,7 @@ function ReviewView({
                     <div className="min-w-0">
                       <p className="truncate text-xs font-medium"><code>{source.filename ? docPath(source) : source.path}</code></p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {source.newer_than_synthesis ? 'newer than synthesis' : 'linked context'} · {formatDate(source.updated_at)}
+                        {source.newer_than_synthesis ? 'newer than synthesis' : 'linked context'} · {categoryLabel(source.change_category)} · {formatDate(source.updated_at)}
                       </p>
                     </div>
                     <button onClick={() => onOpenSourceFolder(source)} className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border px-2 text-[11px] hover:bg-accent">

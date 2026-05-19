@@ -79,6 +79,78 @@ def source_excerpt(source: dict, limit: int = 520) -> str:
     return body[:limit].rsplit(" ", 1)[0].rstrip() + "..."
 
 
+def change_category(source: dict) -> tuple[str, str]:
+    text = " ".join([
+        source.get("path") or "",
+        source.get("filename") or "",
+        source.get("title") or "",
+        strip_frontmatter(source.get("content") or ""),
+    ]).lower()
+    if any(word in text for word in ["decision", "decided", "policy", "rule", "direction", "canonical", "source of truth"]):
+        return "changed decision", "Decision or operating-policy evidence changed."
+    if any(word in text for word in ["risk", "blocked", "blocker", "failure", "bug", "broken", "regression", "unsafe", "missing"]):
+        return "risk", "Risk, blocker, or failure evidence changed."
+    if any(word in text for word in ["open item", "todo", "next action", "follow-up", "remaining work", "needs review"]):
+        return "open question", "Open work or unresolved-question evidence changed."
+    if any(word in text for word in ["verified", "pushed", "deployed", "implemented", "added", "fixed", "completed", "done"]):
+        return "new fact", "New implementation or verification evidence appeared."
+    return "background noise", "Linked evidence changed, but the excerpt does not clearly signal a decision, risk, or open item."
+
+
+def priority_reason(page: dict, newer_source_count: int) -> str:
+    path = document_path(page).lower()
+    if "current-state" in path:
+        owner = "current operating state"
+    elif "decision" in path:
+        owner = "decision memory"
+    elif "open" in path:
+        owner = "open work"
+    elif "infrastructure" in path:
+        owner = "infrastructure memory"
+    elif "client" in path:
+        owner = "client memory"
+    else:
+        owner = "maintained synthesis"
+    return f"{owner} has {newer_source_count} newer linked source(s), so this page should be reviewed before it is treated as current."
+
+
+def build_changed_evidence_digest(page: dict, sources: list[dict]) -> dict:
+    changes = []
+    category_counts: dict[str, int] = {}
+    newer_sources = [source for source in sources if source.get("newer_than_synthesis")]
+    relevant_sources = newer_sources or sources
+
+    for source in relevant_sources[:8]:
+        category, reason = change_category(source)
+        category_counts[category] = category_counts.get(category, 0) + 1
+        changes.append({
+            "source_id": source["id"],
+            "source_path": document_path(source),
+            "title": source.get("title") or source["filename"],
+            "updated_at": source.get("updated_at"),
+            "newer_than_synthesis": source.get("newer_than_synthesis"),
+            "category": category,
+            "reason": reason,
+            "excerpt": source_excerpt(source, 360),
+        })
+
+    if changes:
+        first = changes[0]
+        maintainer_brief = (
+            f"Review {document_path(page)} because {priority_reason(page, len(newer_sources))} "
+            f"Most recent signal: {first['category']} from {first['source_path']}."
+        )
+    else:
+        maintainer_brief = f"No linked source evidence was available for {document_path(page)}."
+
+    return {
+        "priority_reason": priority_reason(page, len(newer_sources)),
+        "maintainer_brief": maintainer_brief,
+        "category_counts": category_counts,
+        "changes": changes,
+    }
+
+
 async def assert_kb_owner(conn, kb_id: UUID, user_id: str) -> None:
     exists = await conn.fetchval(
         "SELECT 1 FROM knowledge_bases WHERE id = $1 AND user_id = $2",
@@ -196,6 +268,7 @@ def build_proposal(page: dict, sources: list[dict]) -> dict:
         }
         for source in sources
     ]
+    changed_evidence_digest = build_changed_evidence_digest(page, sources)
     return {
         "synthesis_document": {
             "id": page["id"],
@@ -211,6 +284,7 @@ def build_proposal(page: dict, sources: list[dict]) -> dict:
         "newer_source_count": newer_source_count,
         "linked_sources": linked_sources,
         "evidence_map": evidence_map,
+        "changed_evidence_digest": changed_evidence_digest,
     }
 
 
@@ -276,7 +350,9 @@ async def build_review_queue(conn, kb_id: UUID, user_id: str) -> dict:
         linked_sources = await conn.fetch(
             """
             SELECT t.id::text, t.path, t.filename, t.title, t.updated_at,
-                   left(coalesce(t.content, ''), 360) AS excerpt
+               left(coalesce(t.content, ''), 360) AS excerpt,
+               (t.updated_at > s.updated_at) AS newer_than_synthesis,
+               t.content
             FROM document_references r
             JOIN documents s ON s.id = r.source_document_id
             JOIN documents t ON t.id = r.target_document_id
@@ -291,9 +367,26 @@ async def build_review_queue(conn, kb_id: UUID, user_id: str) -> dict:
             user_id,
         )
         item = dict(page)
-        item["linked_sources"] = rows(linked_sources)
+        source_rows = rows(linked_sources)
+        linked_digest_sources = []
+        for source in source_rows:
+            category, reason = change_category(source)
+            linked_digest_sources.append({
+                "id": source["id"],
+                "path": source["path"],
+                "filename": source["filename"],
+                "title": source.get("title"),
+                "updated_at": source.get("updated_at"),
+                "excerpt": source.get("excerpt"),
+                "newer_than_synthesis": source.get("newer_than_synthesis"),
+                "change_category": category,
+                "change_reason": reason,
+            })
+        item["linked_sources"] = linked_digest_sources
         item["reason"] = "linked source newer than synthesis"
         item["priority"] = "review"
+        item["priority_reason"] = priority_reason(item, item.get("newer_source_count") or 0)
+        item["changed_evidence_digest"] = build_changed_evidence_digest(item, source_rows)
         stale_with_sources.append(item)
 
     uncited_sources = await conn.fetch(

@@ -10,10 +10,13 @@ All notable changes to the Sovereign Brain / decoupled-agent-memory project are 
 - Added an integrated rebuild script, `scripts/rebuild-integrated-llmwiki.sh`, that builds API/MCP overlays, syncs the vendored LLM Wiki app, preserves host-local runtime configuration, restarts the integrated stack, and verifies key routes.
 - Added retrying route checks for `/brain`, `/brain-review`, and `/wikis` as part of the rebuild flow.
 - Added evidence-map metadata to review proposals and persisted it in review-decision metadata.
+- Added changed-evidence digests to review queue/proposal data, including source category, reason, excerpt, priority reason, and maintainer brief.
+- Added MCP `changed_evidence_brief` so agents can ask what source evidence changed before updating synthesis.
 
 ### Changed
 - Switched the live integrated LLM Wiki deployment to be rebuilt from the decoupled-agent-memory repository instead of a separate upstream checkout.
 - Rewrote `README.md` as a product/repository front door: clearer problem statement, model, repo map, Brain console workflow, quick start, proof commands, rebuild path, architecture, design principles, private deployment boundaries, and attribution.
+- Updated the Brain Review UI to show the maintainer brief and categorized changed-evidence cards before the replacement synthesis/diff.
 - Improved review proposal generation so candidates are replacement-oriented, remove stale generated review blocks, preserve frontmatter, and include concise source-backed evidence.
 - Updated the Brain review UI to label generated updates as replacement synthesis, show evidence basis/source excerpts, explain old-vs-new application impact, and require explicit confirmation before applying replacements.
 - Hardened the rebuild path after proof testing exposed a missing Supabase nginx file in the vendored app tree.
