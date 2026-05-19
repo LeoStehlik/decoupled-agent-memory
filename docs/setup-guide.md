@@ -45,7 +45,7 @@ At minimum set:
 - `APP_URL`
 - `SUPABASE_URL`
 - `NEXT_PUBLIC_*`
-- `API_IMAGE`
+- `API_BASE_IMAGE` and `API_IMAGE`
 - `WEB_IMAGE`
 - `MCP_IMAGE`
 
@@ -98,8 +98,11 @@ The Supabase proxy config handles auth preflights and prevents duplicate or conf
 
 ```bash
 docker compose pull
+docker compose build api mcp
 docker compose up -d
 ```
+
+`API_BASE_IMAGE` must point at an API image compatible with the current upstream `llmwiki` API modules. If a published base image lags behind upstream, build or pull the current upstream API image first and use it as `API_BASE_IMAGE`; the Sovereign Brain overlay then adds hosted auth, graph, websocket, and private-deployment behavior on top.
 
 ## 5. Validate health from a client on the internal network
 

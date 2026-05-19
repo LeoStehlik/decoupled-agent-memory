@@ -37,6 +37,7 @@ A Sovereign Brain reduces that tax with three layers:
 ## Included here
 
 - `docker-compose.yml` for the internal stack
+- `overlays/api/` and `overlays/mcp/` for private-deployment fixes layered over upstream-compatible images
 - pre-built GHCR images for faster startup: `ghcr.io/leostehlik/llm-wiki-web:latest`, `ghcr.io/leostehlik/llm-wiki-api:latest`, and `ghcr.io/leostehlik/llm-wiki-mcp:latest`
 - `infra/nginx/conf.d/llm-wiki.conf` for the internal edge router
 - `infra/supabase/nginx.conf` for the auth proxy and the CORS/header fixes
@@ -66,6 +67,8 @@ This blueprint keeps the fixes that actually mattered:
 - consistent `Access-Control-Allow-*` headers with `always`
 - `proxy_hide_header` to avoid duplicate upstream CORS headers
 - stable `Host` and `X-Forwarded-*` propagation
+- hosted API graph routes, reference storage, and idempotent document identity constraints
+- trusted static-token deployments skip the generic public rate limiter so local sync/MCP batches do not self-throttle
 - websocket upgrade handling where needed
 - internal routing focused on `/`, `/api/`, `/auth/v1/`, and `/mcp`
 - MCP clients must send an `Authorization: Bearer ...` header; for trusted local agents this can be a static bearer token mapped to the real browser-visible `LOCAL_USER_ID` that should own agent-written wiki pages

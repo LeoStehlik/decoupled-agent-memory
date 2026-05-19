@@ -60,6 +60,8 @@ Postgres stores:
 - user and auth state
 - knowledge-base boundaries
 - maintenance metadata
+- document references and stale-page markers for graph-aware wiki upkeep
+- sync-run/source identity metadata for idempotent agent ingestion
 
 This is the durable substrate.
 

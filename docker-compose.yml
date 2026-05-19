@@ -64,7 +64,11 @@ services:
       - sovereign
 
   api:
-    image: ${API_IMAGE:-ghcr.io/leostehlik/llm-wiki-api:latest}
+    build:
+      context: ./overlays/api
+      args:
+        API_BASE_IMAGE: ${API_BASE_IMAGE:-ghcr.io/leostehlik/llm-wiki-api:latest}
+    image: ${API_IMAGE:-sovereign-brain-api:local}
     container_name: sovereign-brain-api
     restart: unless-stopped
     depends_on:
@@ -75,6 +79,7 @@ services:
     env_file:
       - ./.env
     environment:
+      MODE: hosted
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-supavault}
       API_URL: http://api:8000
       APP_URL: ${APP_URL:-http://KOBE_IP}
