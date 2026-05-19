@@ -1,115 +1,133 @@
 # Sovereign Brain
 
-A private, internal-perimeter blueprint for deploying a durable agent memory layer based on the LLM Wiki pattern.
+A private memory layer for long-running agents: source-backed wiki pages, maintained synthesis, graph references, and freshness checks that make stale knowledge visible.
 
-## Attribution
+## Why It Matters
 
-This repository is an internal-only deployment blueprint derived from **Andrej Karpathy's LLM Wiki** pattern and the open-source implementation by **Lucas Astorian** at `lucasastorian/llmwiki` (`https://github.com/lucasastorian/llmwiki`). Keep that credit prominent in downstream reuse. This repo adapts that pattern for a private internal host-hosted deployment with simplified internal routing and sanitised placeholders.
+Most agent systems lose time and trust because every session reconstructs context from raw files. Notes get reread, decisions get rediscovered, contradictions stay buried, and polished summaries keep looking current after the source material has changed.
 
-## What this repo is
+Sovereign Brain turns that into a maintained operating memory:
 
-This is **not** a public SaaS template.
-It is a blueprint for a private stack that runs inside a trusted network perimeter, for example:
+1. **Raw sources** remain the evidence layer.
+2. **Wiki pages** compile the current understanding.
+3. **Synthesis pages** state what matters now and link back to sources.
+4. **Maintenance checks** report stale synthesis, duplicate active paths, uncited sources, and graph health.
+5. **MCP/API access** lets agents read, write, and verify memory instead of improvising it.
 
-- internal client or remote client on the same private network
-- internal host as the internal server
-- Nginx routing traffic only between internal services
-- Postgres plus auth plus API plus MCP kept on the private side
+The product promise is simple: an agent should be able to ask one private workspace what changed, what is current, what is risky, and which source documents support the answer.
 
-The point is simple: agents should stop rebuilding context from raw files every time, and instead write into a maintained memory layer that compounds over time.
+## Fast Demo
 
-## Why this exists
+Start the stack, create a first user, import the sample corpus, rebuild references, and run maintenance:
 
-Most agent systems pay a hidden context tax:
+```bash
+cp .env.example .env
+# edit .env placeholders first
 
-- they repeatedly reread the same source material
-- synthesis is recreated instead of maintained
-- contradictions stay buried
-- link graphs never stabilise
-- token spend rises while confidence stays shaky
+docker compose up -d --build
 
-A Sovereign Brain reduces that tax with three layers:
+BASE_URL=http://KOBE_IP \
+EMAIL=admin@example.com \
+PASSWORD='change-me-long-random-password' \
+make demo
+```
 
-1. **Raw sources**: notes, PDFs, transcripts, markdown, HTML, screenshots, exports
-2. **Compiled knowledge**: wiki pages, entity notes, summaries, contradiction logs, timelines
-3. **Agent access layer**: API and MCP surfaces for search, read, write, maintenance
+The demo imports `examples/demo-corpus`, creates maintained synthesis pages, rebuilds the graph, and prints the wiki and health URLs.
 
-## Included here
+Open the health page:
 
-- `docker-compose.yml` for the internal stack
-- `overlays/api/` and `overlays/mcp/` for private-deployment fixes layered over upstream-compatible images
-- pre-built GHCR images for faster startup: `ghcr.io/leostehlik/llm-wiki-web:latest`, `ghcr.io/leostehlik/llm-wiki-api:latest`, and `ghcr.io/leostehlik/llm-wiki-mcp:latest`
-- `infra/nginx/conf.d/llm-wiki.conf` for the internal edge router
-- `infra/supabase/nginx.conf` for the auth proxy and the CORS/header fixes
-- `setup-guide.md` and `docs/setup-guide.md` for deployment on internal host
-- `architecture.md` and `docs/architecture.md` for system shape and data flow
-- `docs/synthesis-maintainer.md` for the maintained synthesis layer and verification gates
-- `.env.example` with sanitised placeholders only
+```text
+http://KOBE_IP/brain-health
+```
 
-## Core components
+Paste a Supabase user token or trusted static bearer token to inspect one knowledge base. For a password-login demo user, get a token with `BASE_URL=http://KOBE_IP EMAIL=admin@example.com PASSWORD=change-me-long-random-password ./scripts/get-token.sh`.
+
+## What Is Included
+
+- `docker-compose.yml` for the internal stack.
+- `overlays/api/` for private hosted API fixes, graph routes, maintenance status, and idempotent document identity support.
+- `overlays/mcp/` for static bearer auth, HS256 Supabase JWT compatibility, host+port MCP DNS-rebinding allowance, and maintenance tools.
+- `static/brain-health.html` for a lightweight human health surface.
+- `examples/demo-corpus/` for a realistic first-run demo.
+- `scripts/bootstrap-demo.sh` for first-run demo setup.
+- `scripts/sovereign-sync.sh` for idempotent markdown sync.
+- `scripts/smoke-test.sh` for login/API/MCP/maintenance proof.
+- `docs/synthesis-maintainer.md` for the maintained synthesis pattern.
+
+## Core Components
 
 | Component | Role |
 | --- | --- |
-| `db` | Postgres persistence for documents, wiki pages, auth data |
+| `db` | Postgres persistence for documents, wiki pages, auth data, references, and sync metadata |
 | `supabase-auth` | GoTrue auth service |
 | `supabase-proxy` | Internal auth proxy with preflight handling and header cleanup |
-| `api` | Ingestion, search, write, maintenance API |
-| `web` | Human UI for upload, browsing, review |
-| `mcp` | Agent tool surface |
-| `edge` | Internal Nginx entrypoint routing web, API, MCP, and auth |
+| `api` | Ingestion, search, write, graph, and maintenance API |
+| `web` | Human UI for upload, browsing, and review |
+| `mcp` | Agent tool surface for search, read, write, and maintenance checks |
+| `edge` | Internal Nginx entrypoint routing web, API, MCP, auth, and health page |
 
-## The important fix
+## Product Surfaces
 
-The original breakage behind messages like **Load failed** and **Unexpected response code** was not about public hosting. It was an internal routing problem caused by browser preflights, forwarded headers, duplicate or conflicting CORS behavior between layers, and treating multiple internal IPs as equivalent browser origins.
+### Maintained Synthesis
 
-This blueprint keeps the fixes that actually mattered:
+Synthesis pages live under `/wiki/synthesis/`. They should be short, opinionated, and source-backed. They are not generated filler; they are the current operating position with links to evidence.
 
-- explicit `OPTIONS` responses on auth, API, and MCP routes
-- consistent `Access-Control-Allow-*` headers with `always`
-- `proxy_hide_header` to avoid duplicate upstream CORS headers
-- stable `Host` and `X-Forwarded-*` propagation
-- hosted API graph routes, reference storage, and idempotent document identity constraints
-- trusted static-token deployments skip the generic public rate limiter so local sync/MCP batches do not self-throttle
-- websocket upgrade handling where needed
-- internal routing focused on `/`, `/api/`, `/auth/v1/`, and `/mcp`
-- MCP clients must send an `Authorization: Bearer ...` header; for trusted local agents this can be a static bearer token mapped to the real browser-visible `LOCAL_USER_ID` that should own agent-written wiki pages
-- optional canonical-origin redirects so `http://KOBE_IP` and any alternate internal address do not create separate browser storage/auth sessions
+### Brain Health
 
-## Sanitisation note
+`/brain-health` reports:
 
-All environment-specific values are placeholders, for example:
+- active documents
+- source documents
+- wiki pages
+- synthesis pages
+- reference edges
+- duplicate active paths
+- stale synthesis pages
+- uncited sources
+- recent changes
+
+This is the trust surface. Do not claim a brain is healthy until this is clean.
+
+### Sync CLI
+
+`./scripts/sovereign-sync.sh` logs in, creates or finds a knowledge base, upserts markdown source files, upserts synthesis files, optionally rebuilds the graph, and prints maintenance status.
+
+```bash
+BASE_URL=http://KOBE_IP \
+EMAIL=admin@example.com \
+PASSWORD='change-me-long-random-password' \
+KB_NAME='Demo Sovereign Brain' \
+./scripts/sovereign-sync.sh
+```
+
+### Smoke Test
+
+```bash
+BASE_URL=http://KOBE_IP \
+EMAIL=admin@example.com \
+PASSWORD='change-me-long-random-password' \
+MCP_TOKEN='replace-with-long-random-mcp-token' \
+make smoke
+```
+
+## Attribution
+
+This repository is an internal/private deployment blueprint derived from **Andrej Karpathy's LLM Wiki** pattern and the open-source implementation by **Lucas Astorian** at `lucasastorian/llmwiki` (`https://github.com/lucasastorian/llmwiki`). Keep that credit prominent in downstream reuse.
+
+## Private Deployment Boundaries
+
+This is not a public SaaS template. It is built for a trusted network perimeter, for example a private server plus internal clients. Real IPs, domains, tokens, emails, and hostnames belong in `.env`, not in the repo.
+
+Use placeholders such as:
 
 - `KOBE_IP`
 - `MAC_MINI_IP`
 - `INTERNAL_APP_HOST`
 - `YOUR_*`
 
-No real internal IPs, domains, or hostnames should live in this repo. Keep canonical-origin examples as placeholders and put the real values only in the deployment `.env`.
+## Read Next
 
-## Intended use
-
-Use this repo as a blueprint when you want a durable agent memory layer that stays inside a secure perimeter, such as:
-
-- personal research systems
-- private family or household knowledge bases
-- internal team memory systems
-- long-running autonomous agent environments
-
-## Read next
-
-- `setup-guide.md`
-- `architecture.md`
-
-### Create the first login user
-
-After the stack is up, create a login-capable first user through GoTrue:
-
-```bash
-BASE_URL=http://KOBE_IP \
-EMAIL=admin@example.com \
-PASSWORD='change-me-long-random-password' \
-DISPLAY_NAME='Admin' \
-./scripts/create-initial-user.sh
-```
-
-This uses the public auth signup endpoint, verifies password login, and marks the user onboarded through the API. Set `COMPLETE_ONBOARDING=false` if you only want to create the login. Once your first private user exists, set `GOTRUE_DISABLE_SIGNUP=true` in `.env` and restart with `docker compose up -d` if you do not want open signup.
+- `docs/product-demo.md`
+- `docs/setup-guide.md`
+- `docs/synthesis-maintainer.md`
+- `docs/architecture.md`

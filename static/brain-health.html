@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sovereign Brain Health</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#f8fafc; --panel:#fff; --text:#111827; --muted:#6b7280; --border:#d8dee8; --strong:#0f766e; --warn:#b45309; --danger:#b91c1c; --code:#f1f5f9; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --border:#273244; --strong:#2dd4bf; --warn:#fbbf24; --danger:#f87171; --code:#1f2937; } }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; font-size:14px; line-height:1.5; }
+    .shell { max-width:1120px; margin:0 auto; padding:32px 20px; }
+    header { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin-bottom:24px; }
+    h1 { margin:0 0 6px; font-size:24px; line-height:1.2; letter-spacing:0; }
+    p { margin:0; color:var(--muted); }
+    .controls { display:grid; grid-template-columns:1fr 1fr auto; gap:12px; margin:20px 0 24px; }
+    label { display:grid; gap:6px; color:var(--muted); font-size:13px; }
+    input, select, button { height:36px; border:1px solid var(--border); border-radius:8px; background:var(--panel); color:var(--text); font:inherit; }
+    input, select { padding:0 10px; min-width:0; }
+    button { padding:0 14px; cursor:pointer; background:var(--text); color:var(--bg); border-color:var(--text); align-self:end; }
+    .layout { display:grid; grid-template-columns:300px 1fr; gap:16px; align-items:start; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px; }
+    .panel h2 { margin:0 0 12px; font-size:16px; letter-spacing:0; }
+    .metric { display:flex; justify-content:space-between; gap:16px; padding:9px 0; border-top:1px solid var(--border); }
+    .metric:first-of-type { border-top:0; }
+    .metric span:first-child { color:var(--muted); }
+    .metric strong { font-variant-numeric:tabular-nums; }
+    .status { display:inline-flex; align-items:center; height:28px; padding:0 9px; border-radius:6px; border:1px solid var(--border); font-weight:600; }
+    .ok { color:var(--strong); } .warn { color:var(--warn); } .bad { color:var(--danger); }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:9px 8px; border-top:1px solid var(--border); vertical-align:top; }
+    th { color:var(--muted); font-weight:500; }
+    code { background:var(--code); border-radius:6px; padding:2px 5px; }
+    .stack { display:grid; gap:16px; }
+    .empty { color:var(--muted); padding:12px 0 0; }
+    @media (max-width:760px) { header, .layout, .controls { grid-template-columns:1fr; display:grid; } button { width:100%; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header><div><h1>Sovereign Brain Health</h1><p>Inspect freshness, graph links, duplicate paths, and synthesis risk for one private knowledge base.</p></div><span id="overall" class="status">Not loaded</span></header>
+    <section class="controls" aria-label="Connection settings"><label>API origin<input id="api" value="/api" autocomplete="off"></label><label>Bearer token<input id="token" type="password" placeholder="Paste Supabase or static bearer token" autocomplete="off"></label><button id="load">Load</button></section>
+    <section class="layout"><aside class="panel"><h2>Knowledge Base</h2><label>Select<select id="kb"></select></label><div id="summary" style="margin-top:14px"></div></aside><div class="stack"><section class="panel"><h2>Maintenance Queues</h2><div id="queues" class="empty">Load a knowledge base.</div></section><section class="panel"><h2>Recent Changes</h2><div id="changes" class="empty">Load a knowledge base.</div></section></div></section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { bases: [] };
+    function headers() { const token = $('token').value.trim(); return token ? { Authorization: `Bearer ${token}` } : {}; }
+    function api(path) { return `${$('api').value.replace(/\/$/, '')}${path}`; }
+    function metric(label, value) { return `<div class="metric"><span>${label}</span><strong>${value ?? 0}</strong></div>`; }
+    function table(rows, cols) { if (!rows || rows.length === 0) return '<p class="empty">None.</p>'; const head = cols.map(c => `<th>${c.label}</th>`).join(''); const body = rows.map(row => `<tr>${cols.map(c => `<td>${c.render(row)}</td>`).join('')}</tr>`).join(''); return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`; }
+    function setStatus(text, cls) { $('overall').textContent = text; $('overall').className = `status ${cls || ''}`; }
+    async function fetchJson(path) { const res = await fetch(api(path), { headers: headers() }); if (!res.ok) throw new Error(`${res.status} ${res.statusText}`); return res.json(); }
+    async function loadBases() { setStatus('Loading', 'warn'); state.bases = await fetchJson('/v1/knowledge-bases'); $('kb').innerHTML = state.bases.map(kb => `<option value="${kb.id}">${kb.name}</option>`).join(''); if (state.bases.length === 0) { setStatus('No knowledge bases', 'warn'); return; } await loadStatus(); }
+    async function loadStatus() { const kbId = $('kb').value; if (!kbId) return; const data = await fetchJson(`/v1/knowledge-bases/${kbId}/maintenance/status`); const s = data.summary || {}; $('summary').innerHTML = [metric('Active documents', s.active_documents), metric('Source documents', s.source_documents), metric('Wiki pages', s.wiki_pages), metric('Synthesis pages', s.synthesis_pages), metric('Reference edges', data.reference_edges), metric('Duplicate paths', data.duplicate_active_paths), metric('Stale synthesis', data.stale_synthesis_pages?.length || 0), metric('Uncited sources', data.uncited_sources?.length || 0)].join(''); const bad = (data.duplicate_active_paths || 0) > 0 || (data.stale_synthesis_pages?.length || 0) > 0; setStatus(bad ? 'Needs review' : 'Healthy', bad ? 'warn' : 'ok'); $('queues').innerHTML = table([...(data.stale_synthesis_pages || []), ...(data.uncited_sources || [])], [{ label:'Path', render:r => `<code>${r.path}${r.filename}</code>` }, { label:'Title', render:r => r.title || '' }, { label:'Updated', render:r => String(r.newest_source_update || r.updated_at || '').replace('T', ' ').slice(0, 19) }]); $('changes').innerHTML = table(data.recent_changes || [], [{ label:'Kind', render:r => r.kind || '' }, { label:'Path', render:r => `<code>${r.path}${r.filename}</code>` }, { label:'Updated', render:r => String(r.updated_at || '').replace('T', ' ').slice(0, 19) }]); }
+    $('load').addEventListener('click', () => loadBases().catch(err => setStatus(err.message, 'bad')));
+    $('kb').addEventListener('change', () => loadStatus().catch(err => setStatus(err.message, 'bad')));
+  </script>
+</body>
+</html>
