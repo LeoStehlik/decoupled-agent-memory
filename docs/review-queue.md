@@ -41,6 +41,20 @@ The CLI prints:
 - uncited source candidates
 - duplicate active paths
 
+## Proposal Packages
+
+Once the queue shows stale synthesis, generate source-backed proposal files:
+
+```bash
+BASE_URL=http://KOBE_IP \
+EMAIL=admin@example.com \
+PASSWORD='change-me-long-random-password' \
+KB_NAME='Demo Sovereign Brain' \
+make propose
+```
+
+See `proposals.md` for the proposal/apply loop.
+
 ## API
 
 ```text

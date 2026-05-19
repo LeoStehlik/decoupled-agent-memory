@@ -57,6 +57,17 @@ The review demo imports the baseline corpus, updates one source document so link
 http://KOBE_IP/brain-review
 ```
 
+Run the proposal demo:
+
+```bash
+BASE_URL=http://KOBE_IP \
+EMAIL=admin@example.com \
+PASSWORD='change-me-long-random-password' \
+make proposal-demo
+```
+
+The proposal demo generates source-backed markdown proposal packages under `out/review-proposals/`, applies them only in the explicit demo apply step, and then proves the review queue is clean.
+
 ## What Is Included
 
 - `docker-compose.yml` for the internal stack.
@@ -70,6 +81,8 @@ http://KOBE_IP/brain-review
 - `scripts/sovereign-sync.sh` for idempotent markdown sync.
 - `scripts/brain-review.sh` for terminal review briefings.
 - `scripts/review-demo.sh` for the end-to-end freshness review demo.
+- `scripts/propose-review.sh` for source-backed synthesis proposal packages.
+- `scripts/proposal-demo.sh` for the proposal/apply proof loop.
 - `scripts/smoke-test.sh` for login/API/MCP/maintenance proof.
 - `docs/synthesis-maintainer.md` for the maintained synthesis pattern.
 
@@ -118,6 +131,10 @@ This is the trust surface. Do not claim a brain is healthy until this is clean.
 
 This is the product loop: changed source evidence creates review work, reviewed synthesis clears the queue, and health returns to clean.
 
+### Proposal Packages
+
+`make propose` reads the review queue, fetches stale synthesis plus linked source evidence, and writes proposal markdown plus JSON metadata under `out/review-proposals/`. The first version keeps apply explicit: generated proposals are review artifacts until `scripts/propose-review.sh --apply` is run.
+
 ### Sync CLI
 
 `./scripts/sovereign-sync.sh` logs in, creates or finds a knowledge base, upserts markdown source files, upserts synthesis files, optionally rebuilds the graph, and prints maintenance status.
@@ -160,5 +177,6 @@ Use placeholders such as:
 - `docs/product-demo.md`
 - `docs/setup-guide.md`
 - `docs/review-queue.md`
+- `docs/proposals.md`
 - `docs/synthesis-maintainer.md`
 - `docs/architecture.md`

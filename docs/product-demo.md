@@ -54,3 +54,5 @@ baseline source-backed synthesis -> newer source evidence -> review queue -> rev
 ```
 
 The human page is served at `/brain-review`.
+
+Run `make proposal-demo` to extend that loop with generated source-backed proposal files under `out/review-proposals/`.

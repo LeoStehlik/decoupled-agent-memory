@@ -4,6 +4,7 @@
 secrets/
 postgres-data/
 nginx-certs/
+out/
 
 __pycache__/
 *.py[cod]
