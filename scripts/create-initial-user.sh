@@ -39,11 +39,10 @@ signup_response="$({
 
 if [ -z "$signup_response" ]; then
   cat /tmp/create-initial-user-curl.err >&2 || true
-  printf '\nSignup failed. If you disabled signup, temporarily set GOTRUE_DISABLE_SIGNUP=false, restart, run this script, then disable signup again.\n' >&2
-  exit 1
+  printf '\nSignup did not create a new user. Trying password login in case the user already exists.\n' >&2
+else
+  printf '%s' "$signup_response" | python3 -m json.tool >/tmp/create-initial-user-signup.json
 fi
-
-printf '%s' "$signup_response" | python3 -m json.tool >/tmp/create-initial-user-signup.json
 
 login_response="$({
   curl -fsS -X POST "$BASE_URL/auth/v1/token?grant_type=password" \

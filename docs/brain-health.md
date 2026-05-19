@@ -35,3 +35,13 @@ PASSWORD=change-me-long-random-password \
 ```
 
 For trusted local agents, paste the configured `STATIC_BEARER_TOKEN`.
+
+## Review Queue
+
+When health reports stale synthesis, open:
+
+```text
+/brain-review
+```
+
+The review page uses `GET /v1/knowledge-bases/{kb_id}/maintenance/review-queue` to show the synthesis pages that need review, the linked source evidence, uncited sources, and duplicate paths.

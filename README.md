@@ -42,15 +42,34 @@ http://KOBE_IP/brain-health
 
 Paste a Supabase user token or trusted static bearer token to inspect one knowledge base. For a password-login demo user, get a token with `BASE_URL=http://KOBE_IP EMAIL=admin@example.com PASSWORD=change-me-long-random-password ./scripts/get-token.sh`.
 
+Run the review demo:
+
+```bash
+BASE_URL=http://KOBE_IP \
+EMAIL=admin@example.com \
+PASSWORD='change-me-long-random-password' \
+make review-demo
+```
+
+The review demo imports the baseline corpus, updates one source document so linked synthesis becomes stale, prints the review queue, then applies a reviewed synthesis update and proves the queue clears. Open the operator page at:
+
+```text
+http://KOBE_IP/brain-review
+```
+
 ## What Is Included
 
 - `docker-compose.yml` for the internal stack.
 - `overlays/api/` for private hosted API fixes, graph routes, maintenance status, and idempotent document identity support.
 - `overlays/mcp/` for static bearer auth, HS256 Supabase JWT compatibility, host+port MCP DNS-rebinding allowance, and maintenance tools.
 - `static/brain-health.html` for a lightweight human health surface.
+- `static/brain-review.html` for the human synthesis review queue.
 - `examples/demo-corpus/` for a realistic first-run demo.
+- `examples/review-demo/` for a stale-source to reviewed-synthesis proof loop.
 - `scripts/bootstrap-demo.sh` for first-run demo setup.
 - `scripts/sovereign-sync.sh` for idempotent markdown sync.
+- `scripts/brain-review.sh` for terminal review briefings.
+- `scripts/review-demo.sh` for the end-to-end freshness review demo.
 - `scripts/smoke-test.sh` for login/API/MCP/maintenance proof.
 - `docs/synthesis-maintainer.md` for the maintained synthesis pattern.
 
@@ -87,6 +106,17 @@ Synthesis pages live under `/wiki/synthesis/`. They should be short, opinionated
 - recent changes
 
 This is the trust surface. Do not claim a brain is healthy until this is clean.
+
+### Brain Review
+
+`/brain-review` shows the operator queue behind the health warning:
+
+- stale synthesis pages
+- newer linked sources that caused staleness
+- uncited source candidates
+- duplicate active paths
+
+This is the product loop: changed source evidence creates review work, reviewed synthesis clears the queue, and health returns to clean.
 
 ### Sync CLI
 
@@ -129,5 +159,6 @@ Use placeholders such as:
 
 - `docs/product-demo.md`
 - `docs/setup-guide.md`
+- `docs/review-queue.md`
 - `docs/synthesis-maintainer.md`
 - `docs/architecture.md`

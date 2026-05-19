@@ -64,12 +64,12 @@ async def prefetch_jwks() -> None:
 _EXPECTED_ISSUER = settings.SUPABASE_URL.rstrip("/") + "/auth/v1"
 
 
-async def verify_token(token: str) -> str:
-    """Verify a Supabase JWT or trusted static bearer and return user_id."""
+async def verify_token_payload(token: str) -> dict:
+    """Verify a Supabase JWT or trusted static bearer and return claims."""
     if settings.STATIC_BEARER_TOKEN and compare_digest(token, settings.STATIC_BEARER_TOKEN):
         if not settings.LOCAL_USER_ID:
             raise ValueError("STATIC_BEARER_TOKEN configured but LOCAL_USER_ID is empty")
-        return settings.LOCAL_USER_ID
+        return {"sub": settings.LOCAL_USER_ID, "email": "local-agent@example.invalid"}
 
     try:
         header = jwt.get_unverified_header(token)
@@ -118,7 +118,24 @@ async def verify_token(token: str) -> str:
     user_id = payload.get("sub")
     if not user_id:
         raise ValueError("Token missing sub claim")
-    return user_id
+    return payload
+
+
+async def verify_token(token: str) -> str:
+    """Verify a Supabase JWT or trusted static bearer and return user_id."""
+    return (await verify_token_payload(token))["sub"]
+
+
+async def get_current_claims(request: Request) -> dict:
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing authorization header")
+
+    token = auth_header.removeprefix("Bearer ").strip()
+    try:
+        return await verify_token_payload(token)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 
 async def get_current_user(request: Request) -> str:

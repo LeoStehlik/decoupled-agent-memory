@@ -144,7 +144,7 @@ fi
 
 if [ "$REBUILD_GRAPH" = true ]; then
   if ! api POST "/v1/knowledge-bases/$KB_ID/graph/rebuild" '{}' >/tmp/sovereign-sync-graph.json 2>/tmp/sovereign-sync-graph.err; then
-    if rg -q 'cooldown|429' /tmp/sovereign-sync-graph.err; then
+    if grep -Eiq 'cooldown|429' /tmp/sovereign-sync-graph.err; then
       echo 'Graph rebuild skipped: cooldown active.' >&2
     else
       cat /tmp/sovereign-sync-graph.err >&2

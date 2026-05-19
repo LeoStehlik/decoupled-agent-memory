@@ -94,6 +94,52 @@ async def _status(user_id: str, kb_id: str) -> dict:
     }
 
 
+async def _review_queue(user_id: str, kb_id: str) -> dict:
+    stale = await scoped_query(
+        user_id,
+        """
+        SELECT DISTINCT s.id::text, s.path, s.filename, s.title, s.updated_at,
+               max(t.updated_at) AS newest_source_update,
+               count(DISTINCT t.id) FILTER (WHERE t.updated_at > s.updated_at) AS newer_source_count
+        FROM documents s
+        JOIN document_references r ON r.source_document_id = s.id
+        JOIN documents t ON t.id = r.target_document_id
+        WHERE s.knowledge_base_id = $1
+          AND s.user_id = $2
+          AND NOT s.archived
+          AND s.path LIKE '/wiki/synthesis/%'
+          AND NOT t.archived
+          AND t.path NOT LIKE '/wiki/%'
+          AND t.updated_at > s.updated_at
+        GROUP BY s.id, s.path, s.filename, s.title, s.updated_at
+        ORDER BY newest_source_update DESC
+        LIMIT 25
+        """,
+        kb_id, user_id,
+    )
+    uncited = await scoped_query(
+        user_id,
+        """
+        SELECT d.path, d.filename, d.title, d.updated_at,
+               left(coalesce(d.content, ''), 260) AS excerpt
+        FROM documents d
+        WHERE d.knowledge_base_id = $1
+          AND d.user_id = $2
+          AND NOT d.archived
+          AND d.path NOT LIKE '/wiki/%'
+          AND NOT EXISTS (
+            SELECT 1 FROM document_references r
+            WHERE r.target_document_id = d.id
+              AND r.knowledge_base_id = d.knowledge_base_id
+          )
+        ORDER BY d.updated_at DESC
+        LIMIT 25
+        """,
+        kb_id, user_id,
+    )
+    return {"stale_synthesis_pages": stale, "uncited_sources": uncited}
+
+
 def _fmt_ts(value) -> str:
     if hasattr(value, "strftime"):
         return value.strftime("%Y-%m-%d %H:%M")
@@ -138,4 +184,42 @@ def register(mcp: FastMCP) -> None:
             lines.append("**Uncited sources:**")
             for row in status["uncited_sources"]:
                 lines.append(f"- `{row['path']}{row['filename']}` updated `{_fmt_ts(row.get('updated_at'))}`")
+        return "\n".join(lines)
+
+    @mcp.tool(
+        name="review_queue",
+        description=(
+            "Return the Sovereign Brain synthesis review queue for one knowledge base. "
+            "Use this when source material changed and you need to decide which synthesis "
+            "pages or uncited sources require review before trusting the brain."
+        ),
+    )
+    async def review_queue(ctx: Context, knowledge_base: str) -> str:
+        user_id = get_user_id(ctx)
+        kb = await resolve_kb(user_id, knowledge_base)
+        if not kb:
+            return f"Knowledge base '{knowledge_base}' not found."
+        queue = await _review_queue(user_id, str(kb["id"]))
+        lines = [
+            f"**Review queue for {kb['name']}** (`{kb['slug']}`)",
+            "",
+            f"- Stale synthesis pages: `{len(queue['stale_synthesis_pages'])}`",
+            f"- Uncited sources: `{len(queue['uncited_sources'])}`",
+            "",
+        ]
+        if queue["stale_synthesis_pages"]:
+            lines.append("**Review synthesis:**")
+            for row in queue["stale_synthesis_pages"]:
+                lines.append(
+                    f"- `{row['path']}{row['filename']}` has `{row.get('newer_source_count', 0)}` newer linked source(s); "
+                    f"newest source `{_fmt_ts(row.get('newest_source_update'))}`"
+                )
+            lines.append("")
+        if queue["uncited_sources"]:
+            lines.append("**Uncited source candidates:**")
+            for row in queue["uncited_sources"]:
+                title = row.get("title") or row["filename"]
+                lines.append(f"- `{row['path']}{row['filename']}` ({title}) updated `{_fmt_ts(row.get('updated_at'))}`")
+        if not queue["stale_synthesis_pages"] and not queue["uncited_sources"]:
+            lines.append("Queue is clean.")
         return "\n".join(lines)

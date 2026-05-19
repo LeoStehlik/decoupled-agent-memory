@@ -44,3 +44,13 @@ A good demo state has zero duplicate paths and zero stale synthesis pages. Some 
 ## Why This Demo Works
 
 The sample corpus is deliberately small. The point is not storage volume. The point is that a human can see whether the compiled brain is current enough to trust.
+
+## Review Demo
+
+Run `make review-demo` after the stack is up to see the full trust loop:
+
+```text
+baseline source-backed synthesis -> newer source evidence -> review queue -> reviewed synthesis -> healthy again
+```
+
+The human page is served at `/brain-review`.
