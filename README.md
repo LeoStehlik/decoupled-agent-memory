@@ -23,6 +23,8 @@ It is built for the reality of agent work: sessions end, context windows reset, 
 
 ![Sovereign Brain architecture](docs/assets/brain-architecture-dark.svg)
 
+Example source/review material is indexed in [`examples/README.md`](examples/README.md).
+
 ## What This Repo Is
 
 This repository is the source of truth for the Sovereign Brain / decoupled-agent-memory stack.
