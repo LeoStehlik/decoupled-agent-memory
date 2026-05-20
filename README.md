@@ -2,6 +2,8 @@
 
 Private, source-backed memory for long-running agents.
 
+Sovereign Brain is harness-agnostic. It can serve OpenClaw, Hermes, Codex, OpenCode, Claude Code, or any other agent runtime that can call MCP/API tools or consume source-backed files.
+
 Sovereign Brain turns a pile of notes, logs, decisions, project files, and wiki pages into an operating memory that can answer a harder question than search:
 
 > What is current, what changed, what needs review, and what source evidence supports it?
@@ -57,10 +59,16 @@ Review loop
   -> proposal, evidence map, diff, apply/reject decision, ledger
 
 Agent access
-  -> MCP/API tools for search, read, write, brief, review, and health
+  -> MCP/API tools and source-backed files for OpenClaw, Hermes, Codex, OpenCode, Claude Code, or other harnesses
 ```
 
 The key rule: synthesis must stay attached to source evidence. When linked sources change, the synthesis becomes review work.
+
+## Harness Compatibility
+
+Sovereign Brain is not tied to one chat product or agent runner. The core boundary is the maintained memory layer: raw evidence, wiki synthesis, review decisions, MCP/API access, and rebuildable deployment artifacts. Any harness that can authenticate to the tools or read the exported files can use the same memory surface.
+
+That means one private brain can support multiple execution layers without turning memory into a vendor-specific prompt cache.
 
 ## Current Product Surface
 
