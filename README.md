@@ -12,6 +12,10 @@ Sovereign Brain turns a pile of notes, logs, decisions, project files, and wiki 
 
 It is built for the reality of agent work: sessions end, context windows reset, projects keep moving, and yesterday's polished summary can become dangerously stale. The system keeps raw sources as evidence, maintained synthesis as the current view, and a review loop that makes stale knowledge visible instead of quietly trusted.
 
+## Architecture At A Glance
+
+![Sovereign Brain architecture](docs/assets/brain-architecture.svg)
+
 ## What This Repo Is
 
 This repository is the source of truth for the Sovereign Brain / decoupled-agent-memory stack.
