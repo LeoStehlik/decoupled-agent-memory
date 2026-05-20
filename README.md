@@ -2,15 +2,22 @@
 
 ![Validate](https://github.com/LeoStehlik/decoupled-agent-memory/actions/workflows/validate.yml/badge.svg)
 
-Private, source-backed memory for long-running agents.
+Sovereign Brain is source-backed memory for long-running AI agents.
 
-Sovereign Brain is harness-agnostic. It can serve OpenClaw, Hermes, Codex, OpenCode, Claude Code, or any other agent runtime that can call MCP/API tools or consume source-backed files.
+It is harness-agnostic and can serve OpenClaw, Hermes, Codex, OpenCode, Claude Code, or any other agent runtime that can call MCP/API tools or consume source-backed files.
 
 Sovereign Brain turns a pile of notes, logs, decisions, project files, and wiki pages into an operating memory that can answer a harder question than search:
 
 > What is current, what changed, what needs review, and what source evidence supports it?
 
 It is built for the reality of agent work: sessions end, context windows reset, projects keep moving, and yesterday's polished summary can become dangerously stale. The system keeps raw sources as evidence, maintained synthesis as the current view, and a review loop that makes stale knowledge visible instead of quietly trusted.
+
+## Use Cases
+
+- give long-running agents current project memory with source links
+- detect stale synthesis when underlying evidence changes
+- review and apply memory updates instead of trusting old summaries
+- expose private memory through MCP/API tools without tying it to one harness
 
 ## Architecture At A Glance
 
