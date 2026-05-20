@@ -1,5 +1,7 @@
 # Sovereign Brain
 
+![Validate](https://github.com/LeoStehlik/decoupled-agent-memory/actions/workflows/validate.yml/badge.svg)
+
 Private, source-backed memory for long-running agents.
 
 Sovereign Brain is harness-agnostic. It can serve OpenClaw, Hermes, Codex, OpenCode, Claude Code, or any other agent runtime that can call MCP/API tools or consume source-backed files.
