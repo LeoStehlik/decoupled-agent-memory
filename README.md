@@ -237,6 +237,17 @@ That script:
 - **Repo is truth**: live tweaks must be committed here or they do not exist.
 - **Private by default**: real hosts, tokens, emails, and deployment secrets stay out of git.
 
+
+## Related Tools
+
+Sovereign Brain is useful on its own, but it sits naturally beside a few small agent-operation tools:
+
+- [Proof Loop](https://github.com/LeoStehlik/proof-loop) - finish coding tasks with frozen ACs, fresh verification, and durable proof artifacts.
+- [Loopsmith](https://github.com/LeoStehlik/loopsmith) - turn repeated agent failures into eval packs, candidate comparisons, and promotion decisions.
+- [Brief Master](https://github.com/LeoStehlik/brief-master) - write tighter briefs before agent work starts, including explicit success criteria and constraints.
+
+Use Sovereign Brain for memory and source-backed synthesis. Use Proof Loop for task completion discipline. Use Loopsmith when recurring behaviour needs measurable improvement.
+
 ## Private Deployment Boundaries
 
 Use placeholders in committed files:
