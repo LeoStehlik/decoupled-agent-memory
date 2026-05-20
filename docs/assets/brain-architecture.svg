@@ -1,49 +1,56 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
   <title id="title">Sovereign Brain architecture</title>
   <desc id="desc">Raw sources flow into maintained wiki synthesis, review queues, decisions, and agent access.</desc>
-  <rect width="1200" height="630" fill="#f8fafc"/>
-  <text x="72" y="78" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="34" font-weight="700" fill="#0f172a">Sovereign Brain</text>
-  <text x="72" y="114" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="18" fill="#475569">Source-backed memory for long-running agents</text>
+  <rect width="1200" height="630" fill="#050505"/>
+  <rect x="40" y="40" width="1120" height="550" rx="14" fill="#0a0a0a" stroke="#262626"/>
+
+  <text x="72" y="84" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="34" font-weight="700" fill="#f5f5f5">Sovereign Brain</text>
+  <text x="72" y="120" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif" font-size="18" fill="#a3a3a3">Source-backed memory for long-running agents</text>
+
   <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif">
-    <g transform="translate(72 170)">
-      <rect width="210" height="112" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
-      <text x="24" y="42" font-size="18" font-weight="700" fill="#0f172a">Raw sources</text>
-      <text x="24" y="72" font-size="14" fill="#475569">logs, notes, briefs,</text>
-      <text x="24" y="94" font-size="14" fill="#475569">docs, PDFs, decisions</text>
+    <g transform="translate(72 176)">
+      <rect width="210" height="112" rx="8" fill="#111111" stroke="#404040"/>
+      <text x="24" y="42" font-size="18" font-weight="700" fill="#f5f5f5">Raw sources</text>
+      <text x="24" y="72" font-size="14" fill="#a3a3a3">logs, notes, briefs,</text>
+      <text x="24" y="94" font-size="14" fill="#a3a3a3">docs, PDFs, decisions</text>
     </g>
-    <g transform="translate(360 170)">
-      <rect width="210" height="112" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
-      <text x="24" y="42" font-size="18" font-weight="700" fill="#0f172a">Maintained wiki</text>
-      <text x="24" y="72" font-size="14" fill="#475569">compiled pages with</text>
-      <text x="24" y="94" font-size="14" fill="#475569">source references</text>
+    <g transform="translate(360 176)">
+      <rect width="210" height="112" rx="8" fill="#111111" stroke="#404040"/>
+      <text x="24" y="42" font-size="18" font-weight="700" fill="#f5f5f5">Maintained wiki</text>
+      <text x="24" y="72" font-size="14" fill="#a3a3a3">compiled pages with</text>
+      <text x="24" y="94" font-size="14" fill="#a3a3a3">source references</text>
     </g>
-    <g transform="translate(648 170)">
-      <rect width="210" height="112" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
-      <text x="24" y="42" font-size="18" font-weight="700" fill="#0f172a">Synthesis</text>
-      <text x="24" y="72" font-size="14" fill="#475569">current-state pages</text>
-      <text x="24" y="94" font-size="14" fill="#475569">linked to evidence</text>
+    <g transform="translate(648 176)">
+      <rect width="210" height="112" rx="8" fill="#111111" stroke="#404040"/>
+      <text x="24" y="42" font-size="18" font-weight="700" fill="#f5f5f5">Synthesis</text>
+      <text x="24" y="72" font-size="14" fill="#a3a3a3">current-state pages</text>
+      <text x="24" y="94" font-size="14" fill="#a3a3a3">linked to evidence</text>
     </g>
-    <g transform="translate(936 170)">
-      <rect width="210" height="112" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
-      <text x="24" y="42" font-size="18" font-weight="700" fill="#0f172a">Agent access</text>
-      <text x="24" y="72" font-size="14" fill="#475569">MCP, API, files,</text>
-      <text x="24" y="94" font-size="14" fill="#475569">and review tools</text>
+    <g transform="translate(936 176)">
+      <rect width="210" height="112" rx="8" fill="#111111" stroke="#404040"/>
+      <text x="24" y="42" font-size="18" font-weight="700" fill="#f5f5f5">Agent access</text>
+      <text x="24" y="72" font-size="14" fill="#a3a3a3">MCP, API, files,</text>
+      <text x="24" y="94" font-size="14" fill="#a3a3a3">and review tools</text>
     </g>
-    <path d="M292 226 H350" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
-    <path d="M580 226 H638" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
-    <path d="M868 226 H926" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
-    <g transform="translate(216 380)">
-      <rect width="768" height="118" rx="8" fill="#eef6ff" stroke="#93c5fd"/>
-      <text x="32" y="42" font-size="18" font-weight="700" fill="#0f172a">Review loop</text>
-      <text x="32" y="74" font-size="15" fill="#334155">When linked source evidence changes, synthesis becomes review work:</text>
-      <text x="32" y="100" font-size="15" fill="#334155">changed evidence -> proposal -> diff -> apply/reject -> decision ledger -> fresh synthesis</text>
+
+    <path d="M292 232 H350" stroke="#737373" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+    <path d="M580 232 H638" stroke="#737373" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+    <path d="M868 232 H926" stroke="#737373" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+    <g transform="translate(216 382)">
+      <rect width="768" height="122" rx="8" fill="#0f172a" stroke="#334155"/>
+      <text x="32" y="44" font-size="18" font-weight="700" fill="#f8fafc">Review loop</text>
+      <text x="32" y="76" font-size="15" fill="#cbd5e1">When linked source evidence changes, synthesis becomes review work:</text>
+      <text x="32" y="102" font-size="15" fill="#cbd5e1">changed evidence -&gt; proposal -&gt; diff -&gt; apply/reject -&gt; decision ledger -&gt; fresh synthesis</text>
     </g>
-    <path d="M753 292 V370" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
-    <path d="M456 380 V302" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+    <path d="M753 298 V372" stroke="#737373" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+    <path d="M456 382 V308" stroke="#737373" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
   </g>
+
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L0,6 L9,3 z" fill="#64748b"/>
+      <path d="M0,0 L0,6 L9,3 z" fill="#737373"/>
     </marker>
   </defs>
 </svg>
