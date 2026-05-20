@@ -55,6 +55,61 @@ def sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def json_object(value) -> dict:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            return parsed if isinstance(parsed, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+    return {}
+
+
+async def stale_synthesis_count(conn, kb_id: UUID, user_id: str) -> int:
+    return await conn.fetchval(
+        """
+        SELECT count(*) FROM (
+          SELECT s.id
+          FROM documents s
+          JOIN document_references r ON r.source_document_id = s.id
+          JOIN documents t ON t.id = r.target_document_id
+          WHERE s.knowledge_base_id = $1
+            AND s.user_id = $2
+            AND NOT s.archived
+            AND s.path LIKE '/wiki/synthesis/%'
+            AND NOT t.archived
+            AND t.path NOT LIKE '/wiki/%'
+            AND t.updated_at > s.updated_at
+          GROUP BY s.id
+        ) stale
+        """,
+        kb_id,
+        user_id,
+    )
+
+
+async def synthesis_is_stale(conn, doc_id: UUID, user_id: str) -> bool:
+    return bool(await conn.fetchval(
+        """
+        SELECT 1
+        FROM documents s
+        JOIN document_references r ON r.source_document_id = s.id
+        JOIN documents t ON t.id = r.target_document_id
+        WHERE s.id = $1
+          AND s.user_id = $2
+          AND NOT s.archived
+          AND NOT t.archived
+          AND t.path NOT LIKE '/wiki/%'
+          AND t.updated_at > s.updated_at
+        LIMIT 1
+        """,
+        doc_id,
+        user_id,
+    ))
+
+
 def clean_existing_synthesis(content: str) -> str:
     """Remove previous review/proposal artifacts before creating a new candidate."""
     frontmatter, body = split_frontmatter(content)
@@ -332,6 +387,8 @@ async def insert_decision(conn, kb_id: UUID, user_id: str, doc_id: UUID, action:
             "synthesis_document": proposal.get("synthesis_document"),
             "linked_sources": proposal.get("linked_sources", []),
             "evidence_map": proposal.get("evidence_map", []),
+            "changed_evidence_digest": proposal.get("changed_evidence_digest"),
+            "apply_proof": proposal.get("apply_proof"),
             "newest_source_update": proposal.get("newest_source_update"),
             "newer_source_count": proposal.get("newer_source_count"),
         }, default=str),
@@ -625,6 +682,7 @@ async def apply_review_proposal(
         ) + "\n"
 
         async with conn.transaction():
+            stale_before = await stale_synthesis_count(conn, kb_id, user_id)
             row = await conn.fetchrow(
                 """
                 UPDATE documents
@@ -641,8 +699,18 @@ async def apply_review_proposal(
                 raise HTTPException(status_code=404, detail="Synthesis document not found")
             chunks = chunk_text(body.proposal_content)
             await store_chunks(conn, str(doc_id), user_id, str(kb_id), chunks)
+            stale_after = await stale_synthesis_count(conn, kb_id, user_id)
+            page_stale_after = await synthesis_is_stale(conn, doc_id, user_id)
+            proposal["apply_proof"] = {
+                "stale_before": stale_before,
+                "stale_after": stale_after,
+                "page_clean": not page_stale_after,
+                "target_path": document_path(page),
+                "proposal_sha256": proposal.get("proposal_sha256"),
+                "linked_source_count": len(proposal.get("linked_sources", [])),
+            }
             decision = await insert_decision(conn, kb_id, user_id, doc_id, "applied", body, proposal)
-    return {"decision": decision, "document": dict(row), "proposal": proposal}
+    return {"decision": decision, "document": dict(row), "proposal": proposal, "apply_proof": proposal["apply_proof"]}
 
 
 @router.post("/v1/knowledge-bases/{kb_id}/maintenance/reviews/{doc_id}/reject")
@@ -675,7 +743,7 @@ async def list_review_decisions(
     decisions = await db.conn.fetch(
         """
         SELECT rd.id::text, rd.synthesis_document_id::text, rd.action, rd.actor,
-               rd.rationale, rd.proposal_sha256, rd.linked_source_ids, rd.metadata,
+               rd.rationale, rd.proposal_content, rd.diff_content, rd.proposal_sha256, rd.linked_source_ids, rd.metadata,
                rd.created_at, d.path, d.filename, d.title
         FROM review_decisions rd
         LEFT JOIN documents d ON d.id = rd.synthesis_document_id
@@ -687,3 +755,83 @@ async def list_review_decisions(
         db.user_id,
     )
     return {"knowledge_base_id": str(kb_id), "decisions": rows(decisions)}
+
+
+@router.get("/v1/knowledge-bases/{kb_id}/maintenance/review-decisions/{decision_id}")
+async def get_review_decision_detail(
+    kb_id: UUID,
+    decision_id: UUID,
+    db: ScopedDB = Depends(get_scoped_db),
+):
+    """Return one review decision with stored proposal/diff/proof metadata."""
+    decision = await db.conn.fetchrow(
+        """
+        SELECT rd.id::text, rd.synthesis_document_id::text, rd.action, rd.actor,
+               rd.rationale, rd.proposal_content, rd.diff_content, rd.proposal_sha256,
+               rd.linked_source_ids, rd.metadata, rd.created_at, d.path, d.filename, d.title
+        FROM review_decisions rd
+        LEFT JOIN documents d ON d.id = rd.synthesis_document_id
+        WHERE rd.id = $1 AND rd.knowledge_base_id = $2 AND rd.user_id = $3
+        """,
+        decision_id,
+        kb_id,
+        db.user_id,
+    )
+    if not decision:
+        raise HTTPException(status_code=404, detail="Review decision not found")
+    return {"knowledge_base_id": str(kb_id), "decision": dict(decision)}
+
+
+@router.post("/v1/knowledge-bases/{kb_id}/maintenance/review-decisions/{decision_id}/revert-suggestion")
+async def create_revert_suggestion(
+    kb_id: UUID,
+    decision_id: UUID,
+    db: ScopedDB = Depends(get_scoped_db),
+):
+    """Generate a human-approved revert candidate from an applied decision."""
+    decision = await db.conn.fetchrow(
+        """
+        SELECT rd.id::text, rd.synthesis_document_id, rd.action, rd.actor, rd.rationale,
+               rd.proposal_content, rd.diff_content, rd.proposal_sha256, rd.metadata,
+               rd.created_at, d.path, d.filename, d.title, d.content AS current_content
+        FROM review_decisions rd
+        JOIN documents d ON d.id = rd.synthesis_document_id
+        WHERE rd.id = $1 AND rd.knowledge_base_id = $2 AND rd.user_id = $3
+        """,
+        decision_id,
+        kb_id,
+        db.user_id,
+    )
+    if not decision:
+        raise HTTPException(status_code=404, detail="Review decision not found")
+    if decision["action"] != "applied":
+        raise HTTPException(status_code=400, detail="Only applied decisions can produce revert suggestions")
+
+    metadata = json_object(decision.get("metadata"))
+    original = (metadata.get("synthesis_document") or {}).get("content")
+    if not original:
+        raise HTTPException(status_code=400, detail="Applied decision does not contain original synthesis content")
+    current = decision.get("current_content") or ""
+    target_path = f"{decision['path']}{decision['filename']}"
+    diff_content = "\n".join(
+        difflib.unified_diff(
+            current.splitlines(),
+            original.splitlines(),
+            fromfile=f"current/{target_path}",
+            tofile=f"revert/{target_path}",
+            lineterm="",
+        )
+    ) + "\n"
+    return {
+        "knowledge_base_id": str(kb_id),
+        "decision_id": str(decision_id),
+        "target": {
+            "id": str(decision["synthesis_document_id"]),
+            "path": target_path,
+            "title": decision.get("title"),
+        },
+        "revert_content": original,
+        "diff_content": diff_content,
+        "revert_sha256": sha256(original),
+        "reason": "Revert candidate generated from the original synthesis content stored before this applied decision.",
+    }

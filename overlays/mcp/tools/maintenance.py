@@ -1,9 +1,41 @@
 """Maintenance status MCP tool for Sovereign Brain deployments."""
 
+import difflib
+import hashlib
+import json
+
 from mcp.server.fastmcp import FastMCP, Context
 
 from db import scoped_query, scoped_queryrow
 from .helpers import get_user_id, resolve_kb
+
+
+def _hash_text(value: str) -> str:
+    return hashlib.sha256((value or "").encode("utf-8")).hexdigest()
+
+
+def _unified_diff(before: str, after: str, before_name: str, after_name: str) -> str:
+    return "\n".join(
+        difflib.unified_diff(
+            (before or "").splitlines(),
+            (after or "").splitlines(),
+            fromfile=before_name,
+            tofile=after_name,
+            lineterm="",
+        )
+    ) + "\n"
+
+
+def _json_object(value) -> dict:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            return parsed if isinstance(parsed, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+    return {}
 
 
 async def _status(user_id: str, kb_id: str) -> dict:
@@ -225,6 +257,22 @@ async def _changed_evidence(user_id: str, kb_id: str, limit: int = 5) -> list[di
     return result
 
 
+async def _decision_detail(user_id: str, kb_id: str, decision_id: str) -> dict | None:
+    return await scoped_queryrow(
+        user_id,
+        """
+        SELECT rd.id::text, rd.synthesis_document_id::text, rd.action, rd.actor,
+               rd.rationale, rd.proposal_content, rd.diff_content, rd.proposal_sha256,
+               rd.linked_source_ids, rd.metadata, rd.created_at, d.path, d.filename, d.title,
+               d.content AS current_content
+        FROM review_decisions rd
+        LEFT JOIN documents d ON d.id = rd.synthesis_document_id
+        WHERE rd.id = $1 AND rd.knowledge_base_id = $2 AND rd.user_id = $3
+        """,
+        decision_id, kb_id, user_id,
+    )
+
+
 def _fmt_ts(value) -> str:
     if hasattr(value, "strftime"):
         return value.strftime("%Y-%m-%d %H:%M")
@@ -424,4 +472,84 @@ def register(mcp: FastMCP) -> None:
                 lines.append(f"- {_edit_suggestion(change)}")
                 lines.append(f"  - Reason: {change['reason']}")
             lines.append("")
+        return "\n".join(lines)
+
+    @mcp.tool(
+        name="review_decision_detail",
+        description=(
+            "Inspect one Sovereign Brain review decision by id. Shows action, target, "
+            "proposal hash, rationale, linked-source count, apply proof, and stored diff."
+        ),
+    )
+    async def review_decision_detail(ctx: Context, knowledge_base: str, decision_id: str) -> str:
+        user_id = get_user_id(ctx)
+        kb = await resolve_kb(user_id, knowledge_base)
+        if not kb:
+            return f"Knowledge base '{knowledge_base}' not found."
+        decision = await _decision_detail(user_id, str(kb["id"]), decision_id)
+        if not decision:
+            return f"Review decision '{decision_id}' not found."
+        metadata = _json_object(decision.get("metadata"))
+        proof = metadata.get("apply_proof") or {}
+        target = f"{decision.get('path') or ''}{decision.get('filename') or ''}"
+        lines = [
+            f"**Review decision detail** `{decision['id']}`",
+            "",
+            f"- Knowledge base: `{kb['slug']}`",
+            f"- Target: `{target}`",
+            f"- Action: `{decision.get('action')}`",
+            f"- Actor: `{decision.get('actor')}`",
+            f"- Created: `{_fmt_ts(decision.get('created_at'))}`",
+            f"- Proposal hash: `{decision.get('proposal_sha256') or 'none'}`",
+            f"- Linked sources: `{len(decision.get('linked_source_ids') or [])}`",
+        ]
+        if decision.get("rationale"):
+            lines.append(f"- Rationale: {decision['rationale']}")
+        if proof:
+            lines.extend([
+                "",
+                "**Apply proof:**",
+                f"- Stale before: `{proof.get('stale_before')}`",
+                f"- Stale after: `{proof.get('stale_after')}`",
+                f"- Page clean: `{proof.get('page_clean')}`",
+            ])
+        if decision.get("diff_content"):
+            lines.extend(["", "**Diff:**", "```diff", decision["diff_content"][:4000], "```"])
+        return "\n".join(lines)
+
+    @mcp.tool(
+        name="revert_suggestion",
+        description=(
+            "Generate a human-approved revert candidate for an applied review decision. "
+            "This does not write content; it returns the previous synthesis and diff."
+        ),
+    )
+    async def revert_suggestion(ctx: Context, knowledge_base: str, decision_id: str) -> str:
+        user_id = get_user_id(ctx)
+        kb = await resolve_kb(user_id, knowledge_base)
+        if not kb:
+            return f"Knowledge base '{knowledge_base}' not found."
+        decision = await _decision_detail(user_id, str(kb["id"]), decision_id)
+        if not decision:
+            return f"Review decision '{decision_id}' not found."
+        if decision.get("action") != "applied":
+            return "Only applied decisions can produce revert suggestions."
+        metadata = _json_object(decision.get("metadata"))
+        original = (metadata.get("synthesis_document") or {}).get("content")
+        if not original:
+            return "This applied decision does not contain original synthesis content, so no revert candidate can be generated."
+        target = f"{decision.get('path') or ''}{decision.get('filename') or ''}"
+        current = decision.get("current_content") or ""
+        lines = [
+            f"**Revert suggestion for `{target}`**",
+            "",
+            f"- Decision: `{decision['id']}`",
+            f"- Previous content SHA-256: `{_hash_text(original)}`",
+            "- This is a suggestion only. Apply it through the human review flow.",
+            "",
+            "**Diff current -> revert:**",
+            "```diff",
+            _unified_diff(current, original, f"current/{target}", f"revert/{target}")[:4000],
+            "```",
+        ]
         return "\n".join(lines)

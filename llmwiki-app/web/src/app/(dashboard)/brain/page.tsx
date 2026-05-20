@@ -166,6 +166,7 @@ function BrainPageContent() {
   const [proposalText, setProposalText] = React.useState('')
   const [reviewRationale, setReviewRationale] = React.useState('')
   const [acceptedSuggestions, setAcceptedSuggestions] = React.useState<Record<string, boolean>>({})
+  const [applyProof, setApplyProof] = React.useState<Record<string, any> | null>(null)
   const [confirmApply, setConfirmApply] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -242,6 +243,7 @@ function BrainPageContent() {
       setProposalText(result.proposal.proposal_content || '')
       setReviewRationale('')
       setAcceptedSuggestions({})
+      setApplyProof(null)
       setConfirmApply(false)
       setView('review')
       await loadBrain(selectedKbId)
@@ -254,10 +256,9 @@ function BrainPageContent() {
 
   async function applyProposal() {
     if (!token || !selectedKbId || !proposal) return
-    const appliedDocument = proposal.proposal.synthesis_document
     setAction('Applying proposal')
     try {
-      await apiFetch(`/v1/knowledge-bases/${selectedKbId}/maintenance/reviews/${proposal.docId}/apply`, token, {
+      const result = await apiFetch<Record<string, any>>(`/v1/knowledge-bases/${selectedKbId}/maintenance/reviews/${proposal.docId}/apply`, token, {
         method: 'POST',
         body: JSON.stringify({
           actor: 'llm-wiki-ui',
@@ -269,11 +270,10 @@ function BrainPageContent() {
       setProposalText('')
       setReviewRationale('')
       setAcceptedSuggestions({})
+      setApplyProof(result.apply_proof || null)
       setConfirmApply(false)
       await loadBrain(selectedKbId)
-      if (selectedKb && appliedDocument) {
-        router.push(`/wikis/${selectedKb.slug}?page=${encodeURIComponent((appliedDocument.path || '').replace(/^\/wiki\/?/, ''))}`)
-      }
+      setView('artifacts')
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -297,6 +297,7 @@ function BrainPageContent() {
       setProposalText('')
       setReviewRationale('')
       setAcceptedSuggestions({})
+      setApplyProof(null)
       setConfirmApply(false)
       await loadBrain(selectedKbId)
     } catch (err) {
@@ -456,7 +457,7 @@ function BrainPageContent() {
           />
         )}
         {view === 'health' && <HealthView status={status} />}
-        {view === 'artifacts' && <ArtifactsView decisions={decisions} selectedKb={selectedKb} />}
+        {view === 'artifacts' && <ArtifactsView decisions={decisions} selectedKb={selectedKb} applyProof={applyProof} />}
         </div>
       </main>
     </div>
@@ -964,13 +965,37 @@ function HealthView({ status }: { status: MaintenanceStatus | null }) {
   )
 }
 
-function ArtifactsView({ decisions, selectedKb }: { decisions: ReviewDecisions | null; selectedKb?: KnowledgeBase }) {
+function ArtifactsView({ decisions, selectedKb, applyProof }: { decisions: ReviewDecisions | null; selectedKb?: KnowledgeBase; applyProof?: Record<string, any> | null }) {
   const rows = decisions?.decisions || []
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-      <Panel title="Review ledger">
-        <Rows rows={rows} empty="No review decisions recorded yet." render={(row) => <LedgerRow row={row} />} />
-      </Panel>
+      <div className="space-y-4">
+        {applyProof && (
+          <Panel title="Apply proof">
+            <div className="grid gap-2 text-sm md:grid-cols-4">
+              <SummaryField label="Stale before" value={String(applyProof.stale_before ?? 0)} />
+              <SummaryField label="Stale after" value={String(applyProof.stale_after ?? 0)} />
+              <SummaryField label="Page clean" value={applyProof.page_clean ? 'yes' : 'no'} />
+              <SummaryField label="Sources" value={String(applyProof.linked_source_count ?? 0)} />
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span>Applied <code>{applyProof.target_path || 'synthesis page'}</code>.</span>
+              {applyProof.proposal_sha256 && <span>Proposal hash {(applyProof.proposal_sha256 || '').slice(0, 12)}.</span>}
+              {selectedKb && applyProof.target_path && (
+                <button
+                  onClick={() => window.location.assign(`/wikis/${selectedKb.slug}?page=${encodeURIComponent(String(applyProof.target_path).replace(/^\/wiki\/?/, ''))}`)}
+                  className="h-8 rounded-md border border-border px-3 text-xs text-foreground hover:bg-accent"
+                >
+                  Open updated page
+                </button>
+              )}
+            </div>
+          </Panel>
+        )}
+        <Panel title="Review ledger">
+          <Rows rows={rows} empty="No review decisions recorded yet." render={(row) => <LedgerRow row={row} />} />
+        </Panel>
+      </div>
       <Panel title="Automation path">
         <div className="space-y-3 text-sm text-muted-foreground">
           <p>The browser is the human review surface. CLI artifacts remain useful for demos and repeatable automation.</p>
@@ -983,7 +1008,11 @@ function ArtifactsView({ decisions, selectedKb }: { decisions: ReviewDecisions |
 }
 
 function LedgerRow({ row }: { row: Record<string, any> }) {
+  const [open, setOpen] = React.useState(false)
   const sourceCount = Array.isArray(row.linked_source_ids) ? row.linked_source_ids.length : 0
+  const metadata = row.metadata || {}
+  const proof = metadata.apply_proof
+  const canRevert = row.action === 'applied' && metadata.synthesis_document?.content
   const actionText = row.action === 'applied'
     ? 'accepted and wrote the reviewed synthesis back into the wiki'
     : row.action === 'rejected'
@@ -1000,6 +1029,49 @@ function LedgerRow({ row }: { row: Record<string, any> }) {
         {row.proposal_sha256 ? ` Proposal hash ${(row.proposal_sha256 || '').slice(0, 12)}.` : ''}
       </p>
       {row.rationale && <p className="mt-2 text-sm text-muted-foreground">{row.rationale}</p>}
+      <button onClick={() => setOpen(!open)} className="mt-3 h-8 rounded-md border border-border px-3 text-xs hover:bg-accent">
+        {open ? 'Hide detail' : 'Decision detail'}
+      </button>
+      {open && (
+        <div className="mt-3 rounded-md border border-border bg-background p-3">
+          <div className="grid gap-2 text-sm md:grid-cols-3">
+            <SummaryField label="Decision" value={row.id || 'unknown'} />
+            <SummaryField label="Action" value={row.action || 'unknown'} />
+            <SummaryField label="Sources" value={String(sourceCount)} />
+          </div>
+          {proof && (
+            <div className="mt-3 grid gap-2 text-sm md:grid-cols-3">
+              <SummaryField label="Stale before" value={String(proof.stale_before ?? 0)} />
+              <SummaryField label="Stale after" value={String(proof.stale_after ?? 0)} />
+              <SummaryField label="Page clean" value={proof.page_clean ? 'yes' : 'no'} />
+            </div>
+          )}
+          {metadata.changed_evidence_digest?.edit_suggestions?.length > 0 && (
+            <div className="mt-3">
+              <h4 className="text-sm font-medium">Stored edit suggestions</h4>
+              <Rows rows={metadata.changed_evidence_digest.edit_suggestions.slice(0, 5)} empty="No suggestions stored." render={(suggestion: Record<string, any>) => (
+                <p className="border-t border-border py-2 text-xs text-muted-foreground first:border-t-0">
+                  {suggestion.text}
+                </p>
+              )} />
+            </div>
+          )}
+          {row.diff_content && (
+            <div className="mt-3">
+              <h4 className="text-sm font-medium">Stored diff</h4>
+              <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-muted/40 p-3 font-mono text-xs text-foreground">
+                {row.diff_content}
+              </pre>
+            </div>
+          )}
+          {canRevert && (
+            <div className="mt-3 rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
+              Revert candidate available from the original synthesis stored before this apply decision. Use MCP <code>revert_suggestion</code> or the API revert-suggestion endpoint to inspect it before applying anything.
+            </div>
+          )}
+          {row.proposal_sha256 && <p className="mt-3 text-xs text-muted-foreground">Proposal hash <code>{row.proposal_sha256}</code></p>}
+        </div>
+      )}
     </article>
   )
 }
