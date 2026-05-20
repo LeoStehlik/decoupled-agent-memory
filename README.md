@@ -14,7 +14,7 @@ It is built for the reality of agent work: sessions end, context windows reset, 
 
 ## Architecture At A Glance
 
-![Sovereign Brain architecture](docs/assets/brain-architecture.svg)
+![Sovereign Brain architecture](docs/assets/brain-architecture-dark.svg)
 
 ## What This Repo Is
 
