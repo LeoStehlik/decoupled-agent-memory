@@ -12,11 +12,14 @@ All notable changes to the Sovereign Brain / decoupled-agent-memory project are 
 - Added evidence-map metadata to review proposals and persisted it in review-decision metadata.
 - Added changed-evidence digests to review queue/proposal data, including source category, reason, excerpt, priority reason, and maintainer brief.
 - Added MCP `changed_evidence_brief` so agents can ask what source evidence changed before updating synthesis.
+- Added suggested synthesis edit bullets to proposal metadata and the Brain UI, with per-bullet accept controls that insert selected edits into the proposal draft.
+- Added MCP `synthesis_edit_suggestions` so agents can request focused edit bullets instead of generating broad wiki rewrites.
 
 ### Changed
 - Switched the live integrated LLM Wiki deployment to be rebuilt from the decoupled-agent-memory repository instead of a separate upstream checkout.
 - Rewrote `README.md` as a product/repository front door: clearer problem statement, model, repo map, Brain console workflow, quick start, proof commands, rebuild path, architecture, design principles, private deployment boundaries, and attribution.
 - Updated the Brain Review UI to show the maintainer brief and categorized changed-evidence cards before the replacement synthesis/diff.
+- Changed the review workflow to support accepting individual suggested edit bullets before applying a full replacement synthesis.
 - Improved review proposal generation so candidates are replacement-oriented, remove stale generated review blocks, preserve frontmatter, and include concise source-backed evidence.
 - Updated the Brain review UI to label generated updates as replacement synthesis, show evidence basis/source excerpts, explain old-vs-new application impact, and require explicit confirmation before applying replacements.
 - Hardened the rebuild path after proof testing exposed a missing Supabase nginx file in the vendored app tree.

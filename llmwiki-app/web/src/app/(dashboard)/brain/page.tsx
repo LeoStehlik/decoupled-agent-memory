@@ -165,6 +165,7 @@ function BrainPageContent() {
   const [proposal, setProposal] = React.useState<ProposalState | null>(null)
   const [proposalText, setProposalText] = React.useState('')
   const [reviewRationale, setReviewRationale] = React.useState('')
+  const [acceptedSuggestions, setAcceptedSuggestions] = React.useState<Record<string, boolean>>({})
   const [confirmApply, setConfirmApply] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -240,6 +241,7 @@ function BrainPageContent() {
       setProposal({ docId, ...result })
       setProposalText(result.proposal.proposal_content || '')
       setReviewRationale('')
+      setAcceptedSuggestions({})
       setConfirmApply(false)
       setView('review')
       await loadBrain(selectedKbId)
@@ -266,6 +268,7 @@ function BrainPageContent() {
       setProposal(null)
       setProposalText('')
       setReviewRationale('')
+      setAcceptedSuggestions({})
       setConfirmApply(false)
       await loadBrain(selectedKbId)
       if (selectedKb && appliedDocument) {
@@ -293,6 +296,7 @@ function BrainPageContent() {
       setProposal(null)
       setProposalText('')
       setReviewRationale('')
+      setAcceptedSuggestions({})
       setConfirmApply(false)
       await loadBrain(selectedKbId)
     } catch (err) {
@@ -439,6 +443,8 @@ function BrainPageContent() {
             setProposalText={setProposalText}
             reviewRationale={reviewRationale}
             setReviewRationale={setReviewRationale}
+            acceptedSuggestions={acceptedSuggestions}
+            setAcceptedSuggestions={setAcceptedSuggestions}
             confirmApply={confirmApply}
             setConfirmApply={setConfirmApply}
             onGenerate={generateProposal}
@@ -656,7 +662,7 @@ function BriefView({
 }
 
 function ReviewView({
-  queue, decisions, proposal, proposalText, setProposalText, reviewRationale, setReviewRationale, confirmApply, setConfirmApply, onGenerate, onApply, onReject, onClose, onOpenWiki, onOpenSourceFolder,
+  queue, decisions, proposal, proposalText, setProposalText, reviewRationale, setReviewRationale, acceptedSuggestions, setAcceptedSuggestions, confirmApply, setConfirmApply, onGenerate, onApply, onReject, onClose, onOpenWiki, onOpenSourceFolder,
 }: {
   queue: ReviewQueue | null
   decisions: ReviewDecisions | null
@@ -665,6 +671,8 @@ function ReviewView({
   setProposalText: (value: string) => void
   reviewRationale: string
   setReviewRationale: (value: string) => void
+  acceptedSuggestions: Record<string, boolean>
+  setAcceptedSuggestions: (value: Record<string, boolean>) => void
   confirmApply: boolean
   setConfirmApply: (value: boolean) => void
   onGenerate: (docId: string) => void
@@ -680,7 +688,16 @@ function ReviewView({
   const rankedStale = sortAttentionRows(stale)
   const proposalSources = mergeProposalSources(proposal, queue)
   const evidenceMap = proposal?.proposal.evidence_map || []
+  const editSuggestions = proposal?.proposal.changed_evidence_digest?.edit_suggestions || []
   const originalContent = proposal?.proposal.synthesis_document?.content || ''
+  function toggleSuggestion(suggestion: Record<string, any>) {
+    const next = { ...acceptedSuggestions, [suggestion.id]: !acceptedSuggestions[suggestion.id] }
+    setAcceptedSuggestions(next)
+    if (!acceptedSuggestions[suggestion.id]) {
+      const bullet = `- ${suggestion.text}`
+      setProposalText(proposalText.includes(suggestion.text) ? proposalText : `${proposalText.trimEnd()}\n\n${bullet}\n`)
+    }
+  }
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="space-y-4">
@@ -754,6 +771,31 @@ function ReviewView({
                     <p className="mt-1 text-xs text-muted-foreground">{change.reason}</p>
                     {change.excerpt && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{change.excerpt}</p>}
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {editSuggestions.length > 0 && (
+            <div className="mb-3 rounded-md border border-border bg-background p-3">
+              <h3 className="text-sm font-medium">Suggested synthesis edits</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Accept individual bullets into the proposal draft before reviewing the full replacement.
+              </p>
+              <div className="mt-3 grid gap-2">
+                {editSuggestions.map((suggestion: Record<string, any>) => (
+                  <label key={suggestion.id} className="flex items-start gap-3 rounded-md border border-border bg-card p-3 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(acceptedSuggestions[suggestion.id])}
+                      onChange={() => toggleSuggestion(suggestion)}
+                      className="mt-0.5"
+                    />
+                    <span className="min-w-0">
+                      <span className="block font-medium">{suggestion.action} · {categoryLabel(suggestion.category)}</span>
+                      <span className="mt-1 block leading-relaxed text-muted-foreground">{suggestion.text}</span>
+                      <code className="mt-2 block truncate text-xs text-muted-foreground">{suggestion.source_path}</code>
+                    </span>
+                  </label>
                 ))}
               </div>
             </div>

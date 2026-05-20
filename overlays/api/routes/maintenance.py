@@ -120,8 +120,10 @@ def build_changed_evidence_digest(page: dict, sources: list[dict]) -> dict:
     newer_sources = [source for source in sources if source.get("newer_than_synthesis")]
     relevant_sources = newer_sources or sources
 
+    edit_suggestions = []
     for source in relevant_sources[:8]:
         category, reason = change_category(source)
+        excerpt = source_excerpt(source, 360)
         category_counts[category] = category_counts.get(category, 0) + 1
         changes.append({
             "source_id": source["id"],
@@ -131,7 +133,23 @@ def build_changed_evidence_digest(page: dict, sources: list[dict]) -> dict:
             "newer_than_synthesis": source.get("newer_than_synthesis"),
             "category": category,
             "reason": reason,
-            "excerpt": source_excerpt(source, 360),
+            "excerpt": excerpt,
+        })
+        verb = {
+            "changed decision": "Update",
+            "risk": "Add",
+            "open question": "Track",
+            "new fact": "Add",
+            "background noise": "Check",
+        }.get(category, "Check")
+        edit_suggestions.append({
+            "id": sha256(f"{source['id']}:{category}:{excerpt}")[:12],
+            "action": verb,
+            "category": category,
+            "source_id": source["id"],
+            "source_path": document_path(source),
+            "text": f"{verb}: reflect {category} from `{document_path(source)}` — {excerpt[:220]}",
+            "reason": reason,
         })
 
     if changes:
@@ -148,6 +166,7 @@ def build_changed_evidence_digest(page: dict, sources: list[dict]) -> dict:
         "maintainer_brief": maintainer_brief,
         "category_counts": category_counts,
         "changes": changes,
+        "edit_suggestions": edit_suggestions,
     }
 
 

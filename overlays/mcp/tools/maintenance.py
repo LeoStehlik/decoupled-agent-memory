@@ -158,6 +158,21 @@ def _change_category(row: dict) -> tuple[str, str]:
     return "background noise", "Linked evidence changed, but the excerpt does not clearly signal a decision, risk, or open item."
 
 
+def _edit_suggestion(change: dict) -> str:
+    action = {
+        "changed decision": "Update",
+        "risk": "Add",
+        "open question": "Track",
+        "new fact": "Add",
+        "background noise": "Check",
+    }.get(change.get("category"), "Check")
+    source_path = f"{change['path']}{change['filename']}"
+    excerpt = (change.get("excerpt") or "").strip()
+    if len(excerpt) > 220:
+        excerpt = excerpt[:220].rsplit(" ", 1)[0].rstrip() + "..."
+    return f"{action}: reflect {change.get('category', 'changed evidence')} from `{source_path}` — {excerpt}"
+
+
 async def _changed_evidence(user_id: str, kb_id: str, limit: int = 5) -> list[dict]:
     pages = await scoped_query(
         user_id,
@@ -379,5 +394,34 @@ def register(mcp: FastMCP) -> None:
                 lines.append(f"- **{change['category']}** from `{source_path}` updated `{_fmt_ts(change.get('updated_at'))}`: {change['reason']}")
                 if change.get("excerpt"):
                     lines.append(f"  - Evidence: {change['excerpt']}")
+            lines.append("")
+        return "\n".join(lines)
+
+    @mcp.tool(
+        name="synthesis_edit_suggestions",
+        description=(
+            "Return focused synthesis edit bullets from newer linked source evidence. "
+            "Use this to update memory carefully without generating a large blind wiki patch."
+        ),
+    )
+    async def synthesis_edit_suggestions(ctx: Context, knowledge_base: str, limit: int = 5) -> str:
+        user_id = get_user_id(ctx)
+        kb = await resolve_kb(user_id, knowledge_base)
+        if not kb:
+            return f"Knowledge base '{knowledge_base}' not found."
+        pages = await _changed_evidence(user_id, str(kb["id"]), min(max(limit, 1), 10))
+        lines = [
+            f"**Synthesis edit suggestions for {kb['name']}** (`{kb['slug']}`)",
+            "",
+        ]
+        if not pages:
+            lines.append("No synthesis edit suggestions. No stale synthesis pages have newer linked source evidence.")
+            return "\n".join(lines)
+        for page in pages:
+            page_path = f"{page['path']}{page['filename']}"
+            lines.append(f"## `{page_path}`")
+            for change in page["changes"][:5]:
+                lines.append(f"- {_edit_suggestion(change)}")
+                lines.append(f"  - Reason: {change['reason']}")
             lines.append("")
         return "\n".join(lines)
