@@ -17,12 +17,16 @@ router = APIRouter(tags=["maintenance"])
 
 _FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.+?\n)---[ \t]*\n", re.DOTALL)
 
-# These sources remain searchable, but they are operational/reference material,
+# These sources remain searchable, but they are operational/reference/accepted working material,
 # not review debt when they are not cited by synthesis pages.
 UNCITED_IGNORE_SQL = """
           AND d.path NOT LIKE '/memory/%'
           AND NOT (d.path = '/' AND d.filename IN ('AGENTS.md', 'HEARTBEAT.md', 'IDENTITY.md', 'MEMORY.md', 'SOUL.md', 'TOOLS.md', 'USER.md'))
           AND NOT (d.path = '/org/reports/' AND d.filename LIKE 'llmwiki-maintenance-____-__-__.md')
+          AND NOT (d.path = '/org/reports/' AND d.filename IN ('product-docmost-signal-2026-05-25.md', 'skill-cleaner-audit-2026-05-26.md', 'skill-reports-audit-2026-05-22.md', 'tool-positioning-positioning-2026-05-20.md', 'github-repo-garden-audit-2026-05-20.md'))
+          AND NOT (d.path = '/content project/' AND d.filename = 'anthropic-team-behind-claude.md')
+          AND NOT (d.path = '/external/anthropic/research/' AND d.filename = '2026-04-30-how-people-ask-claude-for-personal-guidance.md')
+          AND NOT (d.path = '/org/briefs/' AND d.filename = 'text-tool-v0.1-codex-brief.md')
 """
 
 

@@ -76,5 +76,6 @@ Some imported sources are intentionally kept searchable without becoming review 
 - daily `llmwiki-maintenance-YYYY-MM-DD.md` reports
 - OpenClaw bootstrap/config files in the workspace root (`AGENTS.md`, `HEARTBEAT.md`, `IDENTITY.md`, `MEMORY.md`, `SOUL.md`, `TOOLS.md`, `USER.md`)
 - files under `/memory/`
+- accepted working evidence from operators product discussions, briefs, audits, and idea-building sessions
 
 These documents can still be cited by synthesis pages when useful; they just do not create an uncited-source attention item by default.
