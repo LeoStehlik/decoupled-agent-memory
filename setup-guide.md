@@ -1,12 +1,12 @@
 # Setup Guide
 
-This guide explains how to deploy Sovereign Brain as an **internal-only** service, with a remote client or internal client talking to internal host across a trusted network.
+This guide explains how to deploy Sovereign Brain as an **internal-only** service, with a trusted client talking to an internal server across a trusted network.
 
 ## Deployment shape
 
 ```text
-internal client / remote client
-  -> http://KOBE_IP:80
+Internal client
+  -> http://INTERNAL_HOST:80
       -> internal edge nginx
           -> web
           -> api
@@ -22,8 +22,8 @@ The important point is that everything stays on the private side. There is no pu
 
 - Docker Engine 24+
 - Docker Compose v2+
-- an internal server, referenced here as `KOBE_IP`
-- internal clients that can reach `http://KOBE_IP`
+- an internal server, referenced here as `INTERNAL_HOST`
+- internal clients that can reach `http://INTERNAL_HOST`
 - container images for API, Web, and MCP published somewhere the server can pull from
 
 ## 2. Prepare the host
@@ -51,27 +51,27 @@ At minimum set:
 
 Recommended internal values:
 
-- `APP_URL=http://KOBE_IP`
-- `APP_URLS=http://KOBE_IP,http://MAC_MINI_IP`
-- `SUPABASE_URL=http://KOBE_IP`
-- `SUPABASE_AUTH_EXTERNAL_URL=http://KOBE_IP/auth/v1`
-- `NEXT_PUBLIC_API_URL=http://KOBE_IP/api`
-- `NEXT_PUBLIC_SUPABASE_URL=http://KOBE_IP`
-- `NEXT_PUBLIC_MCP_URL=http://KOBE_IP/mcp`
-- `NEXT_PUBLIC_CANONICAL_HOST=KOBE_IP` or your stable internal hostname
-- `NEXT_PUBLIC_CANONICAL_REDIRECT_HOSTS=ALT_KOBE_IP,OLD_HOSTNAME` for any alternate addresses that should redirect to the canonical browser origin
+- `APP_URL=http://INTERNAL_HOST`
+- `APP_URLS=http://INTERNAL_HOST,http://CLIENT_IP`
+- `SUPABASE_URL=http://INTERNAL_HOST`
+- `SUPABASE_AUTH_EXTERNAL_URL=http://INTERNAL_HOST/auth/v1`
+- `NEXT_PUBLIC_API_URL=http://INTERNAL_HOST/api`
+- `NEXT_PUBLIC_SUPABASE_URL=http://INTERNAL_HOST`
+- `NEXT_PUBLIC_MCP_URL=http://INTERNAL_HOST/mcp`
+- `NEXT_PUBLIC_CANONICAL_HOST=INTERNAL_HOST` or your stable internal hostname
+- `NEXT_PUBLIC_CANONICAL_REDIRECT_HOSTS=ALTERNATE_INTERNAL_HOST,OLD_HOSTNAME` for any alternate addresses that should redirect to the canonical browser origin
 
-Important: `SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_URL` must be the public base origin, for example `http://KOBE_IP`. Do not include `/auth/v1`; the clients append that path themselves. `SUPABASE_AUTH_EXTERNAL_URL` is the GoTrue external auth URL and should include `/auth/v1`.
+Important: `SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_URL` must be the public base origin, for example `http://INTERNAL_HOST`. Do not include `/auth/v1`; the clients append that path themselves. `SUPABASE_AUTH_EXTERNAL_URL` is the GoTrue external auth URL and should include `/auth/v1`.
 
-Choose one canonical browser origin and stick to it. Browsers isolate auth cookies and local storage by origin, so reaching the same stack as `http://KOBE_IP` in one tab and `http://ALT_KOBE_IP` in another can look like two different sessions or users. Set `NEXT_PUBLIC_CANONICAL_HOST` to the preferred host and list any old/internal aliases in `NEXT_PUBLIC_CANONICAL_REDIRECT_HOSTS`.
+Choose one canonical browser origin and stick to it. Browsers isolate auth cookies and local storage by origin, so reaching the same stack as `http://INTERNAL_HOST` in one tab and `http://ALTERNATE_INTERNAL_HOST` in another can look like two different sessions or users. Set `NEXT_PUBLIC_CANONICAL_HOST` to the preferred host and list any old/internal aliases in `NEXT_PUBLIC_CANONICAL_REDIRECT_HOSTS`.
 
-For MCP clients, configure the client with the MCP URL and a bearer header. Example OpenClaw-style shape:
+For MCP clients, configure the client with the MCP URL and a bearer header. Example MCP client shape:
 
 ```json
 {
   "mcpServers": {
     "llmwiki": {
-      "url": "http://KOBE_IP/mcp",
+      "url": "http://INTERNAL_HOST/mcp",
       "headers": {
         "Authorization": "Bearer replace-with-long-random-mcp-token"
       }
@@ -111,16 +111,16 @@ docker compose ps
 docker compose logs -f edge api web mcp supabase-proxy supabase-auth
 ```
 
-Then test from the internal client or another trusted client:
+Then test from a trusted client:
 
 ```bash
-curl -I http://KOBE_IP/
-curl -I http://KOBE_IP/api/health
-curl -I http://KOBE_IP/auth/v1/health
+curl -I http://INTERNAL_HOST/
+curl -I http://INTERNAL_HOST/api/health
+curl -I http://INTERNAL_HOST/auth/v1/health
 # If you configured alternate redirect hosts, this should return 308 to the canonical origin:
-curl -I http://ALT_KOBE_IP/
-curl -i -X OPTIONS http://KOBE_IP/auth/v1/token \
-  -H Origin: http://MAC_MINI_IP \
+curl -I http://ALTERNATE_INTERNAL_HOST/
+curl -i -X OPTIONS http://INTERNAL_HOST/auth/v1/token \
+  -H Origin: http://CLIENT_IP \
   -H Access-Control-Request-Method: POST
 ```
 
@@ -145,7 +145,7 @@ If the UI shows `Load failed` or `Unexpected response code`, check these proxy r
 After the stack is up, create a login-capable first user through GoTrue:
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 DISPLAY_NAME='Admin' \

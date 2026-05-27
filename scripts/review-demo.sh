@@ -11,7 +11,7 @@ if [ -z "$PASSWORD" ] && [ -z "$TOKEN" ]; then
   cat >&2 <<ERR
 ERROR: set PASSWORD or TOKEN.
 Example:
-  BASE_URL=http://KOBE_IP EMAIL=admin@example.com PASSWORD='long-random-password' make review-demo
+  BASE_URL=http://INTERNAL_HOST EMAIL=admin@example.com PASSWORD='long-random-password' make review-demo
 ERR
   exit 1
 fi

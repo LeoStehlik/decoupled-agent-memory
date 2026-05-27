@@ -5,7 +5,7 @@ It exists because Sovereign Brain / decoupled-agent-memory must not depend on
 Lucas Astorian's upstream checkout for live deployment or product work.
 
 The code here includes the integrated Brain UI and the LLM Wiki app source needed
-for the internal host deployment path. Runtime secrets, host-specific `.env` files,
+for the integrated deployment path. Runtime secrets, host-specific `.env` files,
 node modules, build outputs, backup files, and the old upstream `.git` metadata
 are intentionally excluded.
 
@@ -17,17 +17,17 @@ For Sovereign Brain work, this repository is the source of truth:
 - `overlays/api/` - Sovereign Brain API overlay
 - `overlays/mcp/` - Sovereign Brain MCP overlay
 - `supabase/migrations/` - database schema used by Sovereign Brain
-- `scripts/rebuild-integrated-llmwiki.sh` - internal host rebuild path
+- `scripts/rebuild-integrated-llmwiki.sh` - integrated rebuild path
 
-The old `/opt/sovereign-brain/repos/llmwiki` checkout is no longer a durable source of truth.
+An external upstream checkout is not a durable source of truth.
 At most, it can be treated as a historical/deployment scratch checkout.
 
 ## Rebuild
 
-On internal host:
+On the deployment host:
 
 ```bash
-cd /opt/sovereign-brain/sovereign-brain-repo
+cd /opt/sovereign-brain/source
 make rebuild-integrated-llmwiki
 ```
 

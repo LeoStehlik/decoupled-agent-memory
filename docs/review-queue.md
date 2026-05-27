@@ -78,4 +78,9 @@ Some imported sources are intentionally kept searchable without becoming review 
 - files under `/memory/`
 - operator-accepted working evidence from internal discussions, briefs, audits, and planning sessions
 
+Deployment-specific accepted working evidence can be added without changing source code:
+
+- `SOVEREIGN_UNCITED_IGNORE_PATHS`: comma- or newline-separated exact document paths such as `/reports/example.md`
+- `SOVEREIGN_UNCITED_IGNORE_LIKE`: comma- or newline-separated SQL-like path patterns; `*` is accepted as a wildcard alias
+
 These documents can still be cited by synthesis pages when useful; they just do not create an uncited-source attention item by default.

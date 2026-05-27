@@ -11,7 +11,7 @@ if [ -z "$PASSWORD" ]; then
   cat >&2 <<ERR
 ERROR: set PASSWORD for the demo user.
 Example:
-  BASE_URL=http://KOBE_IP EMAIL=admin@example.com PASSWORD='long-random-password' make demo
+  BASE_URL=http://INTERNAL_HOST EMAIL=admin@example.com PASSWORD='long-random-password' make demo
 ERR
   exit 1
 fi

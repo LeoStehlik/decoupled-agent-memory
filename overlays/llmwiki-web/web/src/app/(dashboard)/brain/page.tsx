@@ -182,8 +182,7 @@ function BrainPageContent() {
 
   React.useEffect(() => {
     if (!selectedKbId && knowledgeBases.length) {
-      const leo = knowledgeBases.find((kb) => kb.slug === 'default-wiki')
-      setSelectedKbId((leo || knowledgeBases[0]).id)
+      setSelectedKbId(knowledgeBases[0].id)
     }
   }, [knowledgeBases, selectedKbId])
 

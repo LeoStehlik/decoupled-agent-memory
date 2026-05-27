@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SOVEREIGN_REPO="${SOVEREIGN_REPO:-/opt/sovereign-brain/sovereign-brain-repo}"
-LLMWIKI_DEPLOY_DIR="${LLMWIKI_DEPLOY_DIR:-/opt/sovereign-brain/sovereign-brain-llmwiki}"
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.internal-host.yml}"
+SOVEREIGN_REPO="${SOVEREIGN_REPO:-/opt/sovereign-brain/source}"
+LLMWIKI_DEPLOY_DIR="${LLMWIKI_DEPLOY_DIR:-/opt/sovereign-brain/llmwiki}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-llmwiki}"
 
 if [[ ! -d "$SOVEREIGN_REPO/.git" ]]; then
@@ -34,8 +34,9 @@ rsync -a --delete \
   "$LLMWIKI_DEPLOY_DIR/"
 
 if [[ ! -f "$LLMWIKI_DEPLOY_DIR/$COMPOSE_FILE" ]]; then
-  if [[ -f "/opt/sovereign-brain/repos/llmwiki/$COMPOSE_FILE" ]]; then
-    cp "/opt/sovereign-brain/repos/llmwiki/$COMPOSE_FILE" "$LLMWIKI_DEPLOY_DIR/$COMPOSE_FILE"
+  UPSTREAM_LLMWIKI_DIR="${UPSTREAM_LLMWIKI_DIR:-}"
+  if [[ -n "$UPSTREAM_LLMWIKI_DIR" && -f "$UPSTREAM_LLMWIKI_DIR/$COMPOSE_FILE" ]]; then
+    cp "$UPSTREAM_LLMWIKI_DIR/$COMPOSE_FILE" "$LLMWIKI_DEPLOY_DIR/$COMPOSE_FILE"
   else
     echo "Missing compose file: $LLMWIKI_DEPLOY_DIR/$COMPOSE_FILE" >&2
     echo "Set COMPOSE_FILE or place the host-specific compose file in the deploy dir." >&2
@@ -43,8 +44,8 @@ if [[ ! -f "$LLMWIKI_DEPLOY_DIR/$COMPOSE_FILE" ]]; then
   fi
 fi
 
-if [[ ! -f "$LLMWIKI_DEPLOY_DIR/.env" && -f "/opt/sovereign-brain/repos/llmwiki/.env" ]]; then
-  cp "/opt/sovereign-brain/repos/llmwiki/.env" "$LLMWIKI_DEPLOY_DIR/.env"
+if [[ ! -f "$LLMWIKI_DEPLOY_DIR/.env" && -n "${UPSTREAM_LLMWIKI_DIR:-}" && -f "$UPSTREAM_LLMWIKI_DIR/.env" ]]; then
+  cp "$UPSTREAM_LLMWIKI_DIR/.env" "$LLMWIKI_DEPLOY_DIR/.env"
 fi
 
 cd "$LLMWIKI_DEPLOY_DIR"

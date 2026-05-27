@@ -3,6 +3,8 @@
 import difflib
 import hashlib
 import json
+import os
+import re
 
 from mcp.server.fastmcp import FastMCP, Context
 
@@ -10,17 +12,37 @@ from db import scoped_query, scoped_queryrow
 from .helpers import get_user_id, resolve_kb
 
 
-# These sources stay searchable in the brain, but they are expected operating/accepted working
-# material rather than uncited evidence that needs human review.
-UNCITED_IGNORE_SQL = """
-          AND d.path NOT LIKE '/memory/%'
-          AND NOT (d.path = '/' AND d.filename IN ('AGENTS.md', 'HEARTBEAT.md', 'IDENTITY.md', 'MEMORY.md', 'SOUL.md', 'TOOLS.md', 'USER.md'))
-          AND NOT (d.path = '/org/reports/' AND d.filename LIKE 'llmwiki-maintenance-____-__-__.md')
-          AND NOT (d.path = '/org/reports/' AND d.filename IN ('product-docmost-signal-2026-05-25.md', 'skill-cleaner-audit-2026-05-26.md', 'skill-reports-audit-2026-05-22.md', 'tool-positioning-positioning-2026-05-20.md', 'github-repo-garden-audit-2026-05-20.md'))
-          AND NOT (d.path = '/content project/' AND d.filename = 'anthropic-team-behind-claude.md')
-          AND NOT (d.path = '/external/anthropic/research/' AND d.filename = '2026-04-30-how-people-ask-claude-for-personal-guidance.md')
-          AND NOT (d.path = '/org/briefs/' AND d.filename = 'text-tool-v0.1-codex-brief.md')
-"""
+# These sources stay searchable in the brain, but they are not treated as uncited
+# review debt. Deployment-specific paths belong in environment variables, not source.
+def _env_list(name: str) -> list[str]:
+    raw = os.getenv(name, "")
+    return [item.strip() for item in re.split(r"[\n,]", raw) if item.strip()]
+
+
+def _sql_literal(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _like_literal(value: str) -> str:
+    return _sql_literal(value.replace("*", "%"))
+
+
+def _uncited_ignore_sql() -> str:
+    clauses = [
+        "d.path NOT LIKE '/memory/%'",
+        "NOT (d.path = '/' AND d.filename IN ('AGENTS.md', 'HEARTBEAT.md', 'IDENTITY.md', 'MEMORY.md', 'SOUL.md', 'TOOLS.md', 'USER.md'))",
+        "NOT (d.path = '/org/reports/' AND d.filename LIKE 'llmwiki-maintenance-____-__-__.md')",
+    ]
+    exact_paths = _env_list("SOVEREIGN_UNCITED_IGNORE_PATHS")
+    if exact_paths:
+        clauses.append(f"NOT ((d.path || d.filename) IN ({', '.join(_sql_literal(path) for path in exact_paths)}))")
+    like_paths = _env_list("SOVEREIGN_UNCITED_IGNORE_LIKE")
+    for pattern in like_paths:
+        clauses.append(f"NOT ((d.path || d.filename) LIKE {_like_literal(pattern)})")
+    return "\n          AND " + "\n          AND ".join(clauses)
+
+
+UNCITED_IGNORE_SQL = _uncited_ignore_sql()
 
 
 def _hash_text(value: str) -> str:

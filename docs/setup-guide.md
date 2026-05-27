@@ -59,13 +59,13 @@ Recommended internal values:
 - `NEXT_PUBLIC_SUPABASE_URL=http://INTERNAL_HOST`
 - `NEXT_PUBLIC_MCP_URL=http://INTERNAL_HOST/mcp`
 - `NEXT_PUBLIC_CANONICAL_HOST=INTERNAL_HOST` or your stable internal hostname
-- `NEXT_PUBLIC_CANONICAL_REDIRECT_HOSTS=ALT_INTERNAL_HOST,OLD_HOSTNAME` for any alternate addresses that should redirect to the canonical browser origin
+- `NEXT_PUBLIC_CANONICAL_REDIRECT_HOSTS=ALTERNATE_INTERNAL_HOST,OLD_HOSTNAME` for any alternate addresses that should redirect to the canonical browser origin
 
 Important: `SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_URL` must be the public base origin, for example `http://INTERNAL_HOST`. Do not include `/auth/v1`; the clients append that path themselves. `SUPABASE_AUTH_EXTERNAL_URL` is the GoTrue external auth URL and should include `/auth/v1`.
 
-Choose one canonical browser origin and stick to it. Browsers isolate auth cookies and local storage by origin, so reaching the same stack as `http://INTERNAL_HOST` in one tab and `http://ALT_INTERNAL_HOST` in another can look like two different sessions or users. Set `NEXT_PUBLIC_CANONICAL_HOST` to the preferred host and list any old/internal aliases in `NEXT_PUBLIC_CANONICAL_REDIRECT_HOSTS`.
+Choose one canonical browser origin and stick to it. Browsers isolate auth cookies and local storage by origin, so reaching the same stack as `http://INTERNAL_HOST` in one tab and `http://ALTERNATE_INTERNAL_HOST` in another can look like two different sessions or users. Set `NEXT_PUBLIC_CANONICAL_HOST` to the preferred host and list any old/internal aliases in `NEXT_PUBLIC_CANONICAL_REDIRECT_HOSTS`.
 
-For MCP clients, configure the client with the MCP URL and a bearer header. Example OpenClaw-style shape:
+For MCP clients, configure the client with the MCP URL and a bearer header. Example MCP client shape:
 
 ```json
 {
@@ -118,7 +118,7 @@ curl -I http://INTERNAL_HOST/
 curl -I http://INTERNAL_HOST/api/health
 curl -I http://INTERNAL_HOST/auth/v1/health
 # If you configured alternate redirect hosts, this should return 308 to the canonical origin:
-curl -I http://ALT_INTERNAL_HOST/
+curl -I http://ALTERNATE_INTERNAL_HOST/
 curl -i -X OPTIONS http://INTERNAL_HOST/auth/v1/token \
   -H Origin: http://CLIENT_IP \
   -H Access-Control-Request-Method: POST
