@@ -5,7 +5,7 @@ The review queue is the action layer behind Brain Health. Health can say synthes
 ## Run The Demo
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 make review-demo
@@ -21,13 +21,13 @@ The demo does four things:
 Open the human surface:
 
 ```text
-http://KOBE_IP/brain-review
+http://INTERNAL_HOST/brain-review
 ```
 
 ## CLI
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 KB_NAME='Demo Sovereign Brain' \
@@ -46,7 +46,7 @@ The CLI prints:
 Once the queue shows stale synthesis, generate source-backed proposal files:
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 KB_NAME='Demo Sovereign Brain' \
@@ -74,8 +74,8 @@ Do not silently refresh synthesis timestamps during source sync. A source-only u
 Some imported sources are intentionally kept searchable without becoming review debt when they are not cited by synthesis pages. The uncited-source queue ignores:
 
 - daily `llmwiki-maintenance-YYYY-MM-DD.md` reports
-- OpenClaw bootstrap/config files in the workspace root (`AGENTS.md`, `HEARTBEAT.md`, `IDENTITY.md`, `MEMORY.md`, `SOUL.md`, `TOOLS.md`, `USER.md`)
+- workspace bootstrap/config files in the root (`AGENTS.md`, `HEARTBEAT.md`, `IDENTITY.md`, `MEMORY.md`, `SOUL.md`, `TOOLS.md`, `USER.md`)
 - files under `/memory/`
-- accepted working evidence from operators product discussions, briefs, audits, and idea-building sessions
+- operator-accepted working evidence from internal discussions, briefs, audits, and planning sessions
 
 These documents can still be cited by synthesis pages when useful; they just do not create an uncited-source attention item by default.

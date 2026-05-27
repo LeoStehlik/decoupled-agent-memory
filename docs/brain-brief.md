@@ -14,7 +14,7 @@ What should happen next?
 ## CLI
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 KB_NAME='Demo Sovereign Brain' \
@@ -51,7 +51,7 @@ Agents should call this before starting work that depends on current memory.
 ## Demo
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 make brief-demo

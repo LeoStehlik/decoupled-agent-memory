@@ -54,7 +54,7 @@ All notable changes to the Sovereign Brain / decoupled-agent-memory project are 
 - Added a proof-loop strip and source/evidence panels to make the Brain workflow easier to trust.
 
 ### Changed
-- Repaired the freshness path for Private Wiki so current workspace, daily, research agent, Product, and public-writing sources could be synced back into the live knowledge base.
+- Repaired the freshness path so current workspace, daily, implementation-brief, and writing sources could be synced back into the live knowledge base.
 - Made source sync idempotent and focused on freshness rather than raw document count.
 - Moved Brain pages away from a bolt-on standalone UI into the LLM Wiki product skin: same header rhythm, back button pattern, user menu behavior, warm background/card tokens, compact tabs, and neutral status styling.
 - Reworked Brain from a single opaque dashboard into a reviewable workflow: operator brief, next-attention ranking, review queue, health, artifacts, source drilldown, proposal basis, and apply controls.

@@ -14,7 +14,7 @@ cp .env.example .env
 
 docker compose up -d --build
 
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 make demo
@@ -27,7 +27,7 @@ The demo imports `examples/demo-corpus/sources` as raw evidence and `examples/de
 After the run, open:
 
 ```text
-http://KOBE_IP/brain-health
+http://INTERNAL_HOST/brain-health
 ```
 
 Paste a bearer token and inspect. For the demo user, run `./scripts/get-token.sh` with the same `BASE_URL`, `EMAIL`, and `PASSWORD` values used during bootstrap.

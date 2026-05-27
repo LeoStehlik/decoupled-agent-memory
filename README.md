@@ -284,8 +284,8 @@ Use Sovereign Brain for memory and source-backed synthesis. Use Proof Loop for t
 Use placeholders in committed files:
 
 - `INTERNAL_APP_HOST`
-- `KOBE_IP`
-- `MAC_MINI_IP`
+- `INTERNAL_HOST`
+- `CLIENT_IP`
 - `YOUR_*`
 
 Keep real IPs, hostnames, domains, tokens, passwords, and email addresses in `.env` or host-local deployment files.

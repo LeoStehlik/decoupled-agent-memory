@@ -7,7 +7,7 @@ The review queue says what is stale. Proposal generation gathers the stale synth
 ## Generate Proposals
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 KB_NAME='Demo Sovereign Brain' \
@@ -31,7 +31,7 @@ Each proposal has:
 ## Apply Explicitly
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 KB_NAME='Demo Sovereign Brain' \
@@ -65,7 +65,7 @@ Use `--actor` and `--rationale` to make the ledger meaningful:
 ## Demo
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 make proposal-demo

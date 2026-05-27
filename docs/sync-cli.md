@@ -14,7 +14,7 @@ It:
 ## Example
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 KB_NAME='Demo Sovereign Brain' \
@@ -28,7 +28,7 @@ SYNTHESIS_DIR=examples/demo-corpus/synthesis \
 `./scripts/smoke-test.sh` verifies login, `/v1/me`, knowledge-base listing, maintenance status, and optional MCP initialization.
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_HOST \
 EMAIL=admin@example.com \
 PASSWORD='change-me-long-random-password' \
 MCP_TOKEN='replace-with-long-random-mcp-token' \

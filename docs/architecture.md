@@ -13,8 +13,8 @@ Raw Files -> Ingestion/API -> Postgres -> Synthesis workflows -> Wiki Pages -> M
 ## Deployment shape
 
 ```text
-internal client / remote client
-  -> Internal edge Nginx on internal host
+Internal client
+  -> Internal edge Nginx
     -> Web
     -> API
     -> MCP

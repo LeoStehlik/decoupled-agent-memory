@@ -28,7 +28,7 @@ If stale synthesis or duplicate active paths are non-zero, the brain needs revie
 For a password-login demo user:
 
 ```bash
-BASE_URL=http://KOBE_IP \
+BASE_URL=http://INTERNAL_HOST \
 EMAIL=admin@example.com \
 PASSWORD=change-me-long-random-password \
 ./scripts/get-token.sh
