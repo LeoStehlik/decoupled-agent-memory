@@ -68,3 +68,13 @@ The response includes `review_counts`, `stale_synthesis_pages`, `uncited_sources
 ## Product Rule
 
 Do not silently refresh synthesis timestamps during source sync. A source-only update should make linked synthesis stale. A reviewed synthesis update should clear the queue.
+
+## Ignored Uncited Sources
+
+Some imported sources are intentionally kept searchable without becoming review debt when they are not cited by synthesis pages. The uncited-source queue ignores:
+
+- daily `llmwiki-maintenance-YYYY-MM-DD.md` reports
+- OpenClaw bootstrap/config files in the workspace root (`AGENTS.md`, `HEARTBEAT.md`, `IDENTITY.md`, `MEMORY.md`, `SOUL.md`, `TOOLS.md`, `USER.md`)
+- files under `/memory/`
+
+These documents can still be cited by synthesis pages when useful; they just do not create an uncited-source attention item by default.

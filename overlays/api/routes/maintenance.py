@@ -17,6 +17,14 @@ router = APIRouter(tags=["maintenance"])
 
 _FRONTMATTER_RE = re.compile(r"\A---[ \t]*\n(.+?\n)---[ \t]*\n", re.DOTALL)
 
+# These sources remain searchable, but they are operational/reference material,
+# not review debt when they are not cited by synthesis pages.
+UNCITED_IGNORE_SQL = """
+          AND d.path NOT LIKE '/memory/%'
+          AND NOT (d.path = '/' AND d.filename IN ('AGENTS.md', 'HEARTBEAT.md', 'IDENTITY.md', 'MEMORY.md', 'SOUL.md', 'TOOLS.md', 'USER.md'))
+          AND NOT (d.path = '/org/reports/' AND d.filename LIKE 'llmwiki-maintenance-____-__-__.md')
+"""
+
 
 class ReviewAction(BaseModel):
     actor: str = "operator"
@@ -466,7 +474,7 @@ async def build_review_queue(conn, kb_id: UUID, user_id: str) -> dict:
         stale_with_sources.append(item)
 
     uncited_sources = await conn.fetch(
-        """
+        f"""
         SELECT d.id::text, d.path, d.filename, d.title, d.updated_at,
                left(coalesce(d.content, ''), 360) AS excerpt
         FROM documents d
@@ -474,6 +482,7 @@ async def build_review_queue(conn, kb_id: UUID, user_id: str) -> dict:
           AND d.user_id = $2
           AND NOT d.archived
           AND d.path NOT LIKE '/wiki/%'
+{UNCITED_IGNORE_SQL}
           AND NOT EXISTS (
             SELECT 1 FROM document_references r
             WHERE r.target_document_id = d.id
@@ -561,13 +570,14 @@ async def get_maintenance_status(
     )
 
     uncited_sources = await db.conn.fetch(
-        """
+        f"""
         SELECT d.id::text, d.path, d.filename, d.title, d.updated_at
         FROM documents d
         WHERE d.knowledge_base_id = $1
           AND d.user_id = $2
           AND NOT d.archived
           AND d.path NOT LIKE '/wiki/%'
+{UNCITED_IGNORE_SQL}
           AND NOT EXISTS (
             SELECT 1 FROM document_references r
             WHERE r.target_document_id = d.id

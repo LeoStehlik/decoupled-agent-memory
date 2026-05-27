@@ -10,6 +10,15 @@ from db import scoped_query, scoped_queryrow
 from .helpers import get_user_id, resolve_kb
 
 
+# These sources stay searchable in the brain, but they are expected operating
+# material rather than uncited evidence that needs human review.
+UNCITED_IGNORE_SQL = """
+          AND d.path NOT LIKE '/memory/%'
+          AND NOT (d.path = '/' AND d.filename IN ('AGENTS.md', 'HEARTBEAT.md', 'IDENTITY.md', 'MEMORY.md', 'SOUL.md', 'TOOLS.md', 'USER.md'))
+          AND NOT (d.path = '/org/reports/' AND d.filename LIKE 'llmwiki-maintenance-____-__-__.md')
+"""
+
+
 def _hash_text(value: str) -> str:
     return hashlib.sha256((value or "").encode("utf-8")).hexdigest()
 
@@ -79,13 +88,14 @@ async def _status(user_id: str, kb_id: str) -> dict:
     )
     uncited = await scoped_query(
         user_id,
-        """
+        f"""
         SELECT d.path, d.filename, d.title, d.updated_at
         FROM documents d
         WHERE d.knowledge_base_id = $1
           AND d.user_id = $2
           AND NOT d.archived
           AND d.path NOT LIKE '/wiki/%'
+{UNCITED_IGNORE_SQL}
           AND NOT EXISTS (
             SELECT 1 FROM document_references r
             WHERE r.target_document_id = d.id
@@ -151,7 +161,7 @@ async def _review_queue(user_id: str, kb_id: str) -> dict:
     )
     uncited = await scoped_query(
         user_id,
-        """
+        f"""
         SELECT d.path, d.filename, d.title, d.updated_at,
                left(coalesce(d.content, ''), 260) AS excerpt
         FROM documents d
@@ -159,6 +169,7 @@ async def _review_queue(user_id: str, kb_id: str) -> dict:
           AND d.user_id = $2
           AND NOT d.archived
           AND d.path NOT LIKE '/wiki/%'
+{UNCITED_IGNORE_SQL}
           AND NOT EXISTS (
             SELECT 1 FROM document_references r
             WHERE r.target_document_id = d.id
